@@ -119,6 +119,78 @@ def _k_struct_vec_field(y: wp.array(dtype=StateStruct), p: wp.array(dtype=wp.vec
 
 
 @wp.kernel
+def _k_vec3_subscript(y: wp.array(dtype=wp.vec3), x: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+    y[i][1] = x[i]
+
+
+@wp.kernel
+def _k_quat_subscript(y: wp.array(dtype=wp.quatf), x: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+    y[i][0] = x[i]
+
+
+@wp.struct
+class Inner:
+    a: wp.float32
+    b: wp.float32
+
+
+@wp.struct
+class Outer:
+    inner: Inner
+    tag: wp.float32
+
+
+@wp.kernel
+def _k_nested_struct_scalar(
+    out: wp.array(dtype=Outer), src: wp.array(dtype=wp.float32)
+):
+    i = wp.tid()
+    out[i].inner.a = src[i]
+
+
+@wp.struct
+class MatHolder:
+    m: wp.mat33
+    tag: wp.float32
+
+
+@wp.kernel
+def _k_struct_mat_elem(
+    out: wp.array(dtype=MatHolder), src: wp.array(dtype=wp.float32)
+):
+    i = wp.tid()
+    out[i].m[1, 2] = src[i]
+
+
+@wp.kernel
+def _k_struct_vec_component(
+    out: wp.array(dtype=StateStruct), src: wp.array(dtype=wp.float32)
+):
+    i = wp.tid()
+    out[i].position.y = src[i]
+
+
+@wp.kernel
+def _seed_outer_grad(g: wp.array(dtype=Outer), a_val: wp.float32):
+    i = wp.tid()
+    t = Outer()
+    t.inner = Inner(a_val, 0.0)
+    t.tag = 0.0
+    g[i] = t
+
+
+@wp.kernel
+def _seed_matholder_grad(g: wp.array(dtype=MatHolder)):
+    i = wp.tid()
+    t = MatHolder()
+    t.m = wp.mat33(0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+    t.tag = 0.0
+    g[i] = t
+
+
+@wp.kernel
 def _k_array2d(y: wp.array2d(dtype=wp.vec3), x: wp.array2d(dtype=wp.float32)):
     i, j = wp.tid()
     y[i, j].y = x[i, j]
@@ -146,7 +218,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         dst.grad = wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
-        np.testing.assert_allclose(src.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_gh248_sequential_component_writes(self):
         n = 3
@@ -160,7 +232,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.full(n, 9.0, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.full(n, 9.0, dtype=np.float32))
 
     def test_gh1174_array_struct_field(self):
         n = 3
@@ -174,7 +246,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
             wp.launch(_k_gh1174, n, inputs=[y, x])
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_vec2_component_write(self):
         n = 2
@@ -187,7 +259,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 2), dtype=np.float32), dtype=wp.vec2)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_vec4_component_write(self):
         n = 2
@@ -200,7 +272,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 4), dtype=np.float32), dtype=wp.vec4)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_quaternion_component_write(self):
         n = 2
@@ -213,7 +285,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 4), dtype=np.float32), dtype=wp.quatf)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_mat22_element_write(self):
         n = 2
@@ -226,7 +298,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 2, 2), dtype=np.float32), dtype=wp.mat22)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_mat33_element_write(self):
         n = 2
@@ -239,7 +311,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 3, 3), dtype=np.float32), dtype=wp.mat33)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones(n, dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_transform_translation_write(self):
         n = 2
@@ -252,7 +324,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 7), dtype=np.float32), dtype=wp.transformf)
         tape.backward()
 
-        np.testing.assert_allclose(p.grad.numpy(), np.ones((n, 3), dtype=np.float32))
+        assert_np_equal(p.grad.numpy(), np.ones((n, 3), dtype=np.float32))
 
     def test_transform_rotation_write(self):
         n = 2
@@ -265,7 +337,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((n, 7), dtype=np.float32), dtype=wp.transformf)
         tape.backward()
 
-        np.testing.assert_allclose(q.grad.numpy(), np.ones((n, 4), dtype=np.float32))
+        assert_np_equal(q.grad.numpy(), np.ones((n, 4), dtype=np.float32))
 
     def test_struct_vec_field_write(self):
         n = 2
@@ -279,7 +351,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
             wp.launch(_k_struct_vec_field, n, inputs=[y, p])
         tape.backward()
 
-        np.testing.assert_allclose(p.grad.numpy(), np.ones((n, 3), dtype=np.float32))
+        assert_np_equal(p.grad.numpy(), np.ones((n, 3), dtype=np.float32))
 
     def test_array2d_composite_component(self):
         rows, cols = 2, 3
@@ -292,7 +364,83 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((rows, cols, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones((rows, cols), dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones((rows, cols), dtype=np.float32))
+
+    def test_vec3_subscript_write(self):
+        """``arr[i][1] = rhs`` — vec3 scalar subscript (exercises the
+        ``[k]`` access path rather than ``.y`` attribute)."""
+        n = 3
+        x = wp.array(np.full(n, 4.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
+        y = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_vec3_subscript, n, inputs=[y, x])
+        y.grad = wp.array(np.ones((n, 3), dtype=np.float32), dtype=wp.vec3)
+        tape.backward()
+
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
+
+    def test_quaternion_subscript_write(self):
+        """``arr[i][0] = rhs`` — quat scalar subscript via ``operator[]``."""
+        n = 2
+        x = wp.array(np.full(n, 0.25, dtype=np.float32), dtype=wp.float32, requires_grad=True)
+        y = wp.zeros(n, dtype=wp.quatf, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_quat_subscript, n, inputs=[y, x])
+        y.grad = wp.array(np.ones((n, 4), dtype=np.float32), dtype=wp.quatf)
+        tape.backward()
+
+        assert_np_equal(x.grad.numpy(), np.ones(n, dtype=np.float32))
+
+    def test_nested_struct_scalar_field(self):
+        """``arr[i].inner.a = rhs`` — two-level struct chain terminating
+        in a scalar field."""
+        n = 3
+        src = wp.array(np.ones(n, dtype=np.float32), dtype=wp.float32, requires_grad=True)
+        out = wp.zeros(n, dtype=Outer, requires_grad=True)
+        wp.launch(_seed_outer_grad, n, inputs=[out.grad, 1.0])
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_nested_struct_scalar, n, inputs=[out, src])
+        tape.backward()
+
+        assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
+
+    def test_struct_mat_element_write(self):
+        """``arr[i].m[r, c] = rhs`` — struct field descending into a
+        matrix element (composite-valued field crossed into, terminating
+        in a scalar slot)."""
+        n = 2
+        src = wp.array(np.full(n, 7.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
+        out = wp.zeros(n, dtype=MatHolder, requires_grad=True)
+        wp.launch(_seed_matholder_grad, n, inputs=[out.grad])
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_struct_mat_elem, n, inputs=[out, src])
+        tape.backward()
+
+        assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
+
+    def test_struct_vec_component_write(self):
+        """``arr[i].position.y = rhs`` — struct field descending into a
+        vec3 component."""
+        n = 3
+        src = wp.array(np.full(n, 2.0, dtype=np.float32), dtype=wp.float32, requires_grad=True)
+        out = wp.zeros(n, dtype=StateStruct, requires_grad=True)
+        # Seed upstream adj_out[i].position.y = 1.
+        wp.launch(_seed_state_grad, n, inputs=[out.grad, wp.vec3(0.0, 1.0, 0.0), wp.vec3(0.0, 0.0, 0.0)])
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_struct_vec_component, n, inputs=[out, src])
+        tape.backward()
+
+        assert_np_equal(src.grad.numpy(), np.ones(n, dtype=np.float32))
 
     def test_array3d_composite_component(self):
         a, b, c = 2, 2, 2
@@ -305,7 +453,7 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         y.grad = wp.array(np.ones((a, b, c, 3), dtype=np.float32), dtype=wp.vec3)
         tape.backward()
 
-        np.testing.assert_allclose(x.grad.numpy(), np.ones((a, b, c), dtype=np.float32))
+        assert_np_equal(x.grad.numpy(), np.ones((a, b, c), dtype=np.float32))
 
 
 if __name__ == "__main__":

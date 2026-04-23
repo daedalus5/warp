@@ -3347,39 +3347,55 @@ class Adjoint:
 
         For ``arr[i].y = rhs`` on a ``wp.array(dtype=wp.vec3)``, emits:
 
-        - Forward: ``wp::index(arr, i).c[1] = rhs;`` (one 4-byte store).
-        - Reverse: ``adj_rhs += wp::index(adj_arr, i).c[1]; wp::index(adj_arr, i).c[1] = 0;``
-          (one 4-byte read + accumulate + zero — the overwrite-semantic
-          adjoint for this slot).
+        - Forward: ``wp::index(arr, i).c[1] = rhs;`` (one scalar-sized store).
+        - Reverse: ``wp::adj_array_store_slot(arr, adj_arr, adj_rhs,
+          [&](auto& _e) -> auto& { return _e.c[1]; }, i);`` — the native
+          helper reads the slot's accumulated adjoint into ``adj_rhs`` and
+          zeros it (overwrite semantic), or uses ``buf.grad`` as a fallback
+          source when no adjoint array is passed by the tape.
 
         This avoids the whole-element load / assign_copy / array_store chain
         the generic machinery would otherwise emit, which costs up to ~10x
         more for large composite dtypes (mat44).
 
-        Shapes accepted on this fast path:
-          - Vec/quat component via attribute (``arr[i].x``).
-          - Vec/quat scalar subscript (``arr[i][k]``).
-          - Mat element subscript (``arr[i][r, c]``).
-          - Transform ``.p`` / ``.q``.
-          - Struct scalar field (``arr[i].field``) — single scalar slot.
+        Shapes accepted on this fast path (where ``SCALAR`` means the
+        element's scalar dtype, e.g. ``float32``; ``COMPOSITE`` means a
+        ``vec``/``quat``/``mat``/``transform``):
+
+          - ``arr[i].x`` — vec/quat component via attribute (leaf SCALAR).
+          - ``arr[i][k]`` — vec/quat scalar subscript (leaf SCALAR).
+          - ``arr[i][r, c]`` — mat element subscript (leaf SCALAR).
+          - ``arr[i].p`` / ``arr[i].q`` — transform translation / rotation
+            (leaf is COMPOSITE: vec3 or quat).
+          - ``arr[i].field`` — struct field (leaf SCALAR or COMPOSITE).
+          - ``arr[i].outer.inner.a`` — nested struct chains terminating in
+            any of the above.
+          - ``arr[i].inner.m[r, c]``, ``arr[i].v.y``, etc. — struct chains
+            descending into a composite field.
+          - Any of the above on 2D/3D/4D arrays.
 
         Declines (returns False) for:
-          - Mat slices / vec slices (requires whole-vector assign_copy;
-            orthogonal to the single-slot optimization).
-          - Nested struct chains (next iteration).
-          - Non-scalar struct fields (e.g. ``arr[i].position`` where
-            ``position`` is a ``vec3``) — the current machinery's whole-
-            field store already works; revisit once the scalar path proves
-            itself.
-          - Anything whose array root can't be statically identified.
+
+          - Arrays other than plain ``wp.array`` (indexed, fabric, fixed):
+            those don't have an ``adj_array_store_slot`` overload and
+            would fail to compile.
+          - Vec/quat/mat slices (writing a sub-vec, a row, or a sub-mat):
+            the slot is a composite that isn't trivially addressable as
+            a single reference via the lambda pattern, so these stay on
+            the existing ``assign_copy`` / ``assign_inplace`` path.
+          - Chains that traverse an array field of a struct
+            (``state.v[i] = rhs`` where ``v`` is ``wp.array``): that's
+            a plain array write, already handled correctly by
+            ``array_store``.
+          - wp.adjoint[var] — a special AST pattern, handled upstream.
+          - Non-Name roots (e.g. ``func_call().field``).
+          - Dtypes that don't support atomic accumulation at the array
+            level.
         """
-        # Walk LHS to (array_var, array_indices, slot_access_cpp, slot_type).
-        # Bail early for anything that isn't an array-rooted chain we
-        # recognise — the caller falls through to legacy behaviour.
-        walk = adj._walk_array_slot_access(lhs)
-        if walk is None:
+        plan = adj._walk_array_slot_access(lhs)
+        if plan is None:
             return False
-        array_var, index_vars, slot_access_cpp, slot_type = walk
+        root_var, array_indices_ast, access_parts, slot_type = plan
 
         # If the rhs is still a reference (e.g. ``src[i]`` produced
         # ``address(src, i)``), emit a differentiable ``copy`` to get a
@@ -3392,14 +3408,27 @@ class Adjoint:
         if not types_equal(rhs_value_type, slot_type):
             return False
 
-        arr_cpp = array_var.emit()
-        adj_arr_cpp = array_var.emit_adj()
+        # Evaluate indices AFTER committing to the fast path, in Python
+        # left-to-right order: array subscripts outermost first, then the
+        # composite-component chain inner subscripts in order.
+        array_index_vars = [adj.eval(n) for n in array_indices_ast]
+        access_cpp_parts = []
+        for kind, payload in access_parts:
+            if kind == "str":
+                access_cpp_parts.append(payload)
+            else:  # ("idx", ast_node)
+                idx_var = adj.eval(payload)
+                access_cpp_parts.append(idx_var.emit())
+        access_cpp = "".join(access_cpp_parts)
+
+        arr_cpp = root_var.emit()
+        adj_arr_cpp = root_var.emit_adj()
         rhs_cpp = rhs.emit()
         adj_rhs_cpp = rhs.emit_adj()
-        indices_cpp = ", ".join(v.emit() for v in index_vars)
+        array_indices_cpp = ", ".join(v.emit() for v in array_index_vars)
 
         # Forward: one slot store.
-        adj.add_forward(f"wp::index({arr_cpp}, {indices_cpp}){slot_access_cpp} = {rhs_cpp};")
+        adj.add_forward(f"wp::index({arr_cpp}, {array_indices_cpp}){access_cpp} = {rhs_cpp};")
 
         # Reverse: single call to the slot-level adj_array_store variant,
         # with the composite-component access encoded as a short lambda.
@@ -3408,8 +3437,8 @@ class Adjoint:
         # logic scoped to the single slot.
         adj.add_reverse(
             f"wp::adj_array_store_slot({arr_cpp}, {adj_arr_cpp}, {adj_rhs_cpp}, "
-            f"[&](auto& _e) -> auto& {{ return _e{slot_access_cpp}; }}"
-            + (f", {indices_cpp}" if indices_cpp else "")
+            f"[&](auto& _e) -> auto& {{ return _e{access_cpp}; }}"
+            + (f", {array_indices_cpp}" if array_indices_cpp else "")
             + ");"
         )
 
@@ -3417,18 +3446,32 @@ class Adjoint:
             kernel_name = adj.fun_name
             filename = adj.filename
             lineno = adj.lineno + adj.fun_lineno
-            array_var.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
+            root_var.mark_write(kernel_name=kernel_name, filename=filename, lineno=lineno)
 
         return True
 
     def _walk_array_slot_access(adj, lhs):
-        """Walk the LHS AST and return ``(array_var, index_vars, access_cpp, slot_type)``
-        when the write targets a scalar slot of an array-rooted composite.
+        """Inspect the LHS AST without emitting IR. Returns ``None`` if the
+        fast path can't handle this shape. On success, returns a plan:
 
-        Returns ``None`` if the LHS is not a shape this fast path handles.
-        ``access_cpp`` is the C++ member-access string appended after
-        ``wp::index(arr, *indices)``, e.g. ``.c[1]``, ``.data[1][2]``,
-        ``.p.c[0]``, ``.field``.
+        ``(root_var, array_indices_ast, access_parts, slot_type)``
+
+        where:
+
+        - ``root_var`` is the Warp ``Var`` for the array root.
+        - ``array_indices_ast`` is the list of AST nodes for the array
+          indices, in Python left-to-right order (outermost subscript
+          first).
+        - ``access_parts`` is a list of ``(kind, payload)`` tuples that
+          the caller concatenates into the C++ member-access string
+          after evaluating each ``("idx", ast_node)`` placeholder. The
+          interleaving lets the caller evaluate subscript indices in
+          left-to-right order without duplicating them.
+        - ``slot_type`` is the Warp type of the leaf slot.
+
+        This function performs type checks and AST-shape analysis only —
+        no ``adj.eval`` or other IR-emitting calls. All index evaluation
+        happens in the caller after the acceptance decision is final.
         """
         chain = []
         node = lhs
@@ -3437,8 +3480,8 @@ class Adjoint:
             node = node.value
         if not isinstance(node, ast.Name):
             return None
-        # wp.adjoint[var] is not an array write.
-        if hasattr(node, "id") and node.id == "wp":
+        # ``wp.adjoint[var]`` has its own upstream handler; don't intercept.
+        if node.id == "wp":
             return None
         if node.id not in adj.symbols:
             return None
@@ -3446,15 +3489,21 @@ class Adjoint:
         if not isinstance(root_var, Var):
             return None
         root_type = strip_reference(root_var.type)
-        if not is_array(root_type):
+        # Only plain ``wp.array`` is supported here. ``indexedarray``,
+        # ``fabricarray``, ``indexedfabricarray``, and ``fixedarray`` do
+        # not have an ``adj_array_store_slot`` overload and would fail to
+        # compile; they stay on the legacy path for both forward and
+        # reverse (same as main).
+        if not warp._src.types.matches_array_class(root_type, warp._src.types.array):
             return None
         # Reject dtypes that can't support the slot-level grad update.
         if root_type.dtype in warp._src.types.non_atomic_types:
             return None
 
-        # Consume ``ndim`` subscripts from the end of the chain (= outer
-        # end of the AST) to get the array indices. Walk outer-to-inner.
-        chain = list(reversed(chain))  # outer-to-inner
+        # Consume ``ndim`` subscripts from the outer end of the chain to
+        # get the array indices. The AST chain we collected is inner-to-
+        # outer; reverse so ``chain[0]`` is the outermost access.
+        chain = list(reversed(chain))
         needed = root_type.ndim
         array_indices_ast = []
         consumed = 0
@@ -3473,78 +3522,66 @@ class Adjoint:
             return None
         remaining = chain[consumed:]
         if not remaining:
-            # Whole-element write, not a composite-component write.
+            # Whole-element write — not a composite-component write.
             return None
 
-        # Build the slot-access C++ string by walking ``remaining`` (the
-        # composite-component access chain on arr[i, j, ...]).
-        access_cpp = ""
+        # Walk the remaining chain, building ``access_parts`` without
+        # evaluating any subscript indices. The caller evaluates them
+        # after the full walk accepts.
+        access_parts = []
         current_type = root_type.dtype
         for step in remaining:
             if isinstance(step, ast.Attribute):
                 if type_is_vector(current_type):
-                    # Map .x/.y/.z/.w to .c[0]/.c[1]/... via the existing
-                    # swizzle helper.
+                    # ``.x``/``.y``/``.z``/``.w`` → ``.c[N]``. The swizzle
+                    # helper doesn't emit IR — it just resolves a constant.
                     try:
                         idx_var = adj.vector_component_index(step.attr, current_type)
                     except WarpCodegenAttributeError:
                         return None
-                    access_cpp += f".c[{idx_var.constant}]"
-                    # Next type is the vec scalar.
+                    access_parts.append(("str", f".c[{idx_var.constant}]"))
                     current_type = getattr(current_type, "_wp_scalar_type_", None)
                 elif type_is_quaternion(current_type):
                     if step.attr not in ("x", "y", "z", "w"):
                         return None
-                    access_cpp += f".{step.attr}"
+                    access_parts.append(("str", f".{step.attr}"))
                     current_type = getattr(current_type, "_wp_scalar_type_", None)
                 elif type_is_transformation(current_type):
+                    scalar_t = getattr(current_type, "_wp_scalar_type_", None)
+                    if scalar_t is None:
+                        return None
                     if step.attr == "p":
-                        access_cpp += ".p"
-                        # Next type is vec3.
-                        scalar_t = getattr(current_type, "_wp_scalar_type_", None)
-                        if scalar_t is None:
-                            return None
+                        access_parts.append(("str", ".p"))
                         current_type = vector(length=3, dtype=scalar_t)
                     elif step.attr == "q":
-                        access_cpp += ".q"
-                        scalar_t = getattr(current_type, "_wp_scalar_type_", None)
-                        if scalar_t is None:
-                            return None
+                        access_parts.append(("str", ".q"))
                         current_type = quaternion(dtype=scalar_t)
                     else:
                         return None
                 elif isinstance(current_type, Struct):
                     if step.attr not in current_type.vars:
                         return None
-                    access_cpp += f".{step.attr}"
+                    access_parts.append(("str", f".{step.attr}"))
                     current_type = current_type.vars[step.attr].type
-                    # Array-field chains (``state.v[i]`` where v is wp.array)
-                    # are real array writes and belong on the normal
-                    # array_store path. Reject here so the legacy flow
-                    # handles them.
+                    # Array-field chains (``state.v[i] = rhs`` where ``v``
+                    # is ``wp.array``) belong on the regular array_store
+                    # path. Reject here so the legacy flow handles them.
                     if is_array(current_type):
                         return None
                 else:
                     return None
-            else:  # Subscript
+            else:  # ast.Subscript
                 if type_is_matrix(current_type):
-                    # Expect a tuple slice (row, col).
-                    if isinstance(step.slice, ast.Tuple):
-                        slice_elts = step.slice.elts
-                    else:
+                    if not isinstance(step.slice, ast.Tuple):
                         return None
+                    slice_elts = step.slice.elts
                     if len(slice_elts) != 2:
                         return None
-                    # Require both indices to be compile-time integer
-                    # constants or simple Name references — otherwise we
-                    # bail so the slice/general-index case hits legacy.
-                    if not all(isinstance(e, (ast.Constant, ast.Name, ast.UnaryOp)) for e in slice_elts):
-                        return None
-                    row_var = adj.eval(slice_elts[0])
-                    col_var = adj.eval(slice_elts[1])
-                    if row_var.type is not int32 and not isinstance(row_var.type, type(int32)):
-                        pass  # allow; Warp may coerce
-                    access_cpp += f".data[{row_var.emit()}][{col_var.emit()}]"
+                    access_parts.append(("str", ".data["))
+                    access_parts.append(("idx", slice_elts[0]))
+                    access_parts.append(("str", "]["))
+                    access_parts.append(("idx", slice_elts[1]))
+                    access_parts.append(("str", "]"))
                     current_type = getattr(current_type, "_wp_scalar_type_", None)
                 elif (
                     type_is_vector(current_type)
@@ -3552,20 +3589,18 @@ class Adjoint:
                     or type_is_transformation(current_type)
                 ):
                     if isinstance(step.slice, ast.Tuple):
-                        return None  # 2D subscript on a 1D composite — not a slot write.
-                    if not isinstance(step.slice, (ast.Constant, ast.Name, ast.UnaryOp)):
+                        # 2D subscript on a 1D composite — unsupported.
                         return None
-                    idx_var = adj.eval(step.slice)
-                    access_cpp += f"[{idx_var.emit()}]"
+                    access_parts.append(("str", "["))
+                    access_parts.append(("idx", step.slice))
+                    access_parts.append(("str", "]"))
                     current_type = getattr(current_type, "_wp_scalar_type_", None)
                 else:
                     return None
             if current_type is None:
                 return None
 
-        # Evaluate the array indices ONCE (side-effect-safe).
-        index_vars = [adj.eval(n) for n in array_indices_ast]
-        return root_var, index_vars, access_cpp, current_type
+        return root_var, array_indices_ast, access_parts, current_type
 
     def _store_subscript(adj, lhs, target, indices, rhs):
         """Store ``rhs`` into a subscript target using pre-evaluated ``target`` and ``indices``.
