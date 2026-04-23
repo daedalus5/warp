@@ -3381,25 +3381,6 @@ class Adjoint:
             return False
         array_var, index_vars, slot_access_cpp, slot_type = walk
 
-        # Scalar-slot only for now — non-scalar slot writes (e.g. struct
-        # vec3 field) currently go through the generic whole-field store
-        # path which is already reasonable. This can be extended later.
-        if not (
-            slot_type is float32
-            or slot_type is float64
-            or slot_type is float16
-            or slot_type is int32
-            or slot_type is int64
-            or slot_type is int16
-            or slot_type is int8
-            or slot_type is uint32
-            or slot_type is uint64
-            or slot_type is uint16
-            or slot_type is uint8
-            or slot_type is bool
-        ):
-            return False
-
         # If the rhs is still a reference (e.g. ``src[i]`` produced
         # ``address(src, i)``), emit a differentiable ``copy`` to get a
         # value with a working adjoint chain back to the source array.
@@ -3407,7 +3388,8 @@ class Adjoint:
         # and drop the read-side gradient.
         if is_reference(rhs.type):
             rhs = adj.add_builtin_call("copy", [rhs])
-        if strip_reference(rhs.type) is not slot_type:
+        rhs_value_type = strip_reference(rhs.type)
+        if not types_equal(rhs_value_type, slot_type):
             return False
 
         arr_cpp = array_var.emit()
@@ -3419,29 +3401,16 @@ class Adjoint:
         # Forward: one slot store.
         adj.add_forward(f"wp::index({arr_cpp}, {indices_cpp}){slot_access_cpp} = {rhs_cpp};")
 
-        # Reverse: mirror adj_array_store's grad-routing logic at slot
-        # granularity. Two potential storage locations for the adjoint:
-        #   - adj_<arr>.data — adjoint array passed in from the tape.
-        #   - <arr>.grad     — the array's own grad buffer (when tape didn't
-        #                      supply an adj buffer).
-        # The RETAIN_GRAD flag suppresses zeroing in either case.
-        # Pick the concrete scalar ctype string for the zero-assignment so we
-        # don't need ``decltype`` / ``std::remove_reference`` (NVRTC's stdlib
-        # surface is limited).
-        zero_type_cpp = Var.dtype_to_ctype(slot_type)
-
-        read_expr = f"wp::index({adj_arr_cpp}, {indices_cpp}){slot_access_cpp}"
-        read_grad_expr = f"wp::index_grad({arr_cpp}, {indices_cpp}){slot_access_cpp}"
-
+        # Reverse: single call to the slot-level adj_array_store variant,
+        # with the composite-component access encoded as a short lambda.
+        # The grad-routing (adj_buf vs buf.grad) and RETAIN_GRAD handling
+        # live in the native helper, matching adj_array_store's existing
+        # logic scoped to the single slot.
         adj.add_reverse(
-            f"if ({adj_arr_cpp}.data) {{ "
-            f"{adj_rhs_cpp} += {read_expr}; "
-            f"if ({arr_cpp}.grad && {adj_arr_cpp}.data == {arr_cpp}.grad && "
-            f"!({arr_cpp}.flags & wp::ARRAY_FLAG_RETAIN_GRAD)) {read_expr} = {zero_type_cpp}{{}}; "
-            f"}} else if ({arr_cpp}.grad) {{ "
-            f"{adj_rhs_cpp} += {read_grad_expr}; "
-            f"if (!({arr_cpp}.flags & wp::ARRAY_FLAG_RETAIN_GRAD)) {read_grad_expr} = {zero_type_cpp}{{}}; "
-            f"}}"
+            f"wp::adj_array_store_slot({arr_cpp}, {adj_arr_cpp}, {adj_rhs_cpp}, "
+            f"[&](auto& _e) -> auto& {{ return _e{slot_access_cpp}; }}"
+            + (f", {indices_cpp}" if indices_cpp else "")
+            + ");"
         )
 
         if adj.builder_options.get("verify_autograd_array_access", False):
