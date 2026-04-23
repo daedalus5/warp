@@ -161,6 +161,17 @@
   ([newton#2363](https://github.com/newton-physics/newton/issues/2363)).
 - Fix `ValueError: Cell is empty` crash during eager module hashing when a kernel closure references a variable
   assigned later in the enclosing scope ([GH-913](https://github.com/NVIDIA/warp/issues/913)).
+- Fix adjoint computation for in-place composite-component writes on arrays.
+  Writes of the form ``arr[i].y = rhs``, ``arr[i].field = rhs`` (scalar
+  struct field), ``m[i][r, c] = rhs``, ``t[i].p = v``, ``t[i].q = q``, and
+  ``state[i].position = rhs`` (composite-valued struct field) now correctly
+  propagate gradients instead of silently dropping them. The forward
+  emission is unchanged from prior releases — the backward pass has been
+  rewritten to read and zero the single overwritten slot of ``adj_arr``
+  instead of leaving it on a non-differentiable path
+  ([GH-583](https://github.com/NVIDIA/warp/issues/583),
+  [GH-248](https://github.com/NVIDIA/warp/issues/248),
+  [GH-1174](https://github.com/NVIDIA/warp/issues/1174)).
 
 ### Documentation
 
