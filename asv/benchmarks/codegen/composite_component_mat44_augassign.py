@@ -38,7 +38,7 @@ class RunForwardKernel:
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
-        self.n = 1 << 20
+        self.n = 1 << 18
         self.dst = wp.zeros(self.n, dtype=wp.mat44, device="cuda:0")
         self.src = wp.ones(self.n, dtype=wp.float32, device="cuda:0")
         self.cmd = wp.launch(
@@ -59,7 +59,7 @@ class RunBackwardKernel:
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
-        self.n = 1 << 20
+        self.n = 1 << 18
         self.dst = wp.zeros(self.n, dtype=wp.mat44, device="cuda:0", requires_grad=True)
         self.src = wp.ones(self.n, dtype=wp.float32, device="cuda:0", requires_grad=True)
         wp.synchronize_device("cuda:0")
