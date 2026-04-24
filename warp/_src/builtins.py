@@ -9187,7 +9187,6 @@ add_builtin(
     doc="""Divergence-free vector field based on Perlin noise.
 
     Use the gradient of a Perlin noise function.""",
-    is_differentiable=False,
 )
 add_builtin(
     "curlnoise",
@@ -9198,7 +9197,6 @@ add_builtin(
     doc="""Divergence-free vector field based on Perlin noise.
 
     Use the curl of three Perlin noise functions.""",
-    is_differentiable=False,
 )
 add_builtin(
     "curlnoise",
@@ -9209,7 +9207,6 @@ add_builtin(
     doc="""Divergence-free vector field based on Perlin noise.
 
     Use the curl of three Perlin noise functions.""",
-    is_differentiable=False,
 )
 
 

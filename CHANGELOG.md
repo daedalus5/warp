@@ -145,6 +145,10 @@
 
 ### Fixed
 
+- Add analytic backward passes for ``wp.curlnoise`` (2D, 3D, 4D). Previously
+  the adjoints were stubbed as no-ops and ``is_differentiable=False``, so
+  gradients silently dropped through curl-noise force fields in
+  differentiable simulations.
 - Fix kernel cache serving stale binaries when compilation settings like
   `llvm_cuda` or `use_precompiled_headers` are changed between runs
   ([GH-903](https://github.com/NVIDIA/warp/issues/903)).
