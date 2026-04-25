@@ -75,8 +75,11 @@ def tile_ifft_3d_kernel_vec2d(gx: wp.array3d(dtype=wp.vec2d), gy: wp.array3d(dty
     wp.tile_store(gy, xy)
 
 
-@unittest.skipUnless(wp._src.context.runtime.core.wp_is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
+    # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
+    wp_device = wp.get_device(device)
+    if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Warp was not built with MathDx support")
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
     fft_size = data_shape[-1] // 2
@@ -114,8 +117,11 @@ def test_tile_fft(test, device, wp_dtype, kernel, data_shape):
     assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
 
 
-@unittest.skipUnless(wp._src.context.runtime.core.wp_is_mathdx_enabled(), "Warp was not built with MathDx support")
 def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
+    # CUDA path requires MathDx for cuFFTDx; CPU path has a built-in implementation.
+    wp_device = wp.get_device(device)
+    if wp_device.is_cuda and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Warp was not built with MathDx support")
     np_real_dtype = {wp.vec2f: np.float32, wp.vec2d: np.float64}[wp_dtype]
     np_cplx_dtype = {wp.vec2f: np.complex64, wp.vec2d: np.complex128}[wp_dtype]
     fft_size = data_shape[-1] // 2
@@ -154,7 +160,7 @@ def test_tile_ifft(test, device, wp_dtype, kernel, data_shape):
     assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
 
 
-cuda_devices = get_cuda_test_devices()
+test_devices = get_test_devices()
 
 
 class TestTileFFT(unittest.TestCase):
@@ -171,7 +177,7 @@ add_function_test(
         kernel=tile_fft_kernel_vec2f,
         data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -183,7 +189,7 @@ add_function_test(
         kernel=tile_fft_kernel_vec2d,
         data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -195,7 +201,7 @@ add_function_test(
         kernel=tile_ifft_kernel_vec2f,
         data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -207,7 +213,7 @@ add_function_test(
         kernel=tile_ifft_kernel_vec2d,
         data_shape=(FFT_SIZE_FP64, 2 * FFT_SIZE_FP64),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -219,7 +225,7 @@ add_function_test(
         kernel=tile_fft_3d_kernel_vec2f,
         data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -231,7 +237,7 @@ add_function_test(
         kernel=tile_fft_3d_kernel_vec2d,
         data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -243,7 +249,7 @@ add_function_test(
         kernel=tile_ifft_3d_kernel_vec2f,
         data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP32),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 add_function_test(
@@ -255,7 +261,7 @@ add_function_test(
         kernel=tile_ifft_3d_kernel_vec2d,
         data_shape=(FFT_3D_DIM0, FFT_3D_DIM1, 2 * FFT_SIZE_FP64),
     ),
-    devices=cuda_devices,
+    devices=test_devices,
     check_output=False,
 )
 

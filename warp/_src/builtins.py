@@ -13133,8 +13133,31 @@ def tile_fft_generic_lto_dispatch_func(
     arch = options["output_arch"]
     ept = size // num_threads
 
-    if arch is None or not warp._src.context.runtime.core.wp_is_mathdx_enabled():
-        # CPU/no-MathDx dispatch
+    if arch is None:
+        # CPU dispatch: no LTO, direction is baked into the builtin (tile_fft
+        # vs tile_ifft). We still emit the same 7-arg shape the GPU macro
+        # expects so codegen produces both forward and adjoint call sites; the
+        # CPU macro in tile.h ignores the unused LTO-symbol / shared-memory /
+        # ept arguments and reads batch/ept from these inline constants.
+        lto_placeholder = "/* cpu */ 0"
+        return (
+            (
+                Var(lto_placeholder, str, False, True, False),
+                Var(lto_placeholder, str, False, True, False),
+                Var(dtype, str, False, True, False),
+                Var("0", str, False, True, False),
+                Var(str(batch), str, False, True, False),
+                Var(str(ept), str, False, True, False),
+                inout,
+            ),
+            [],
+            [],
+            0,
+        )
+    elif not warp._src.context.runtime.core.wp_is_mathdx_enabled():
+        # GPU without MathDx: no FFT is available. Emit empty args so the
+        # generated call site becomes `tile_fft()` which matches the no-op
+        # macro in tile.h and preserves historical behavior.
         return ([], [], [], 0)
     else:
         # Validate elements per thread (ept) - cuFFTDx requires ept >= 2

@@ -73,6 +73,9 @@
   and loaded for execution from Python or standalone C++ via `capture_load()`. CPU graph
   capture supports replay through `capture_launch()`. Added `wp.handle` scalar type for mesh handle serialization
   ([GH-1349](https://github.com/NVIDIA/warp/issues/1349)).
+- Add CPU support for `wp.tile_fft()` and `wp.tile_ifft()` and their adjoints. The CPU path uses a
+  self-contained radix-2 Cooley-Tukey implementation for power-of-two FFT sizes and a direct DFT
+  fallback for other sizes, matching the unnormalized convention used on the GPU.
 
 ### Removed
 
