@@ -6,7 +6,6 @@
 #include "builtin.h"
 
 #include "rand.h"
-#include "tile_fft_cpu.h"
 
 #ifdef __clang__
 // disable warnings related to C++17 extensions on CPU JIT builds
@@ -6062,99 +6061,14 @@ void adj_tile_matmul(
     WP_TILE_SYNC();
 }
 
-#if !defined(__CUDA_ARCH__)
-
-// CPU FFT: dispatch to the portable in-place implementation in tile_fft_cpu.h.
-// The Python dispatch emits the same 7-arg shape as the GPU macro so the
-// generated call site stays uniform; the LTO-symbol / shared-memory / ept args
-// are ignored here because we have no LTO and block_dim is forced to 1 for
-// CPU tile launches (see launch_tiled), making each batch contiguous in the
-// register tile's flat `data` array. Direction is baked into the macro name
-// (tile_fft is forward, tile_ifft is inverse).
-
-#define tile_fft(function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
-     do { \
-         wp::tile_fft_cpu_impl<-1, dtype>((int)(batch_size), (int)(ept), (Xinout).data); \
-     } while (0)
-
-#define tile_ifft(function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
-     do { \
-         wp::tile_fft_cpu_impl<+1, dtype>((int)(batch_size), (int)(ept), (Xinout).data); \
-     } while (0)
-
-// Adjoint of FFT is IFFT (unnormalized) applied to the output gradient.
-#define adj_tile_fft(                                                                                                  \
-    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
-    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
-) \
-     do { \
-         wp::tile_fft_cpu_impl<+1, dtype>((int)(batch_size), (int)(ept), (adj_Xinout).data); \
-     } while (0)
-
-// Adjoint of IFFT is FFT (unnormalized) applied to the output gradient.
-#define adj_tile_ifft(                                                                                                 \
-    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
-    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
-) \
-     do { \
-         wp::tile_fft_cpu_impl<-1, dtype>((int)(batch_size), (int)(ept), (adj_Xinout).data); \
-     } while (0)
-
-#elif WP_ENABLE_MATHDX == 0
-
-// GPU without MathDx: no FFT implementation is available. The CPU scalar path
-// would produce wrong results with block_dim > 1 because the register tile is
-// strided across threads, so fall back to the historical no-op behavior.
-
-#define tile_fft()
-#define tile_ifft()
-
-#define adj_tile_fft()
-#define adj_tile_ifft()
-
-#else
-
-// TODO(lcambier): use a properly overaligned complex type that matches cuFFTDx's expectation
-// and remove the need for __align__(16) dtypes data[...]
-// backward_function_name is the LTO for the inverse direction, used by the adjoint
-#define tile_fft(function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout) \
-     do { \
-         void function_name(dtype*, char*); \
-         char* buffer = (char*)wp::tile_shared_storage_t::alloc(shared_memory_size); \
-         __align__(16) dtype data[ept]; \
-         for(int b = 0; b < (int)batch_size; b++) { \
-             dtype* inout = Xinout.data + (int)b * (int)ept; \
-             memcpy(data, inout, sizeof(dtype) * ept); \
-             function_name(data, buffer); \
-             memcpy(inout, data, sizeof(dtype) * ept); \
-             WP_TILE_SYNC(); \
-         } \
-         wp::tile_shared_storage_t::alloc(-shared_memory_size); \
-     } while (0)
-
-#define tile_ifft tile_fft
-
-// The adjoint of FFT is IFFT, so we use backward_function_name (the IFFT LTO) on adj_Xinout
-// adj_function_name, adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept are ignored
-
-#define adj_tile_fft(                                                                                                  \
-    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
-    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
-) \
-     do { \
-         tile_fft(backward_function_name, function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
-     } while (0)
-
-// The adjoint of IFFT is FFT, so we use backward_function_name (the FFT LTO) on adj_Xinout
-#define adj_tile_ifft(                                                                                                 \
-    function_name, backward_function_name, dtype, shared_memory_size, batch_size, ept, Xinout, adj_function_name,      \
-    adj_backward_function_name, adj_dtype, adj_shared_memory_size, adj_batch_size, adj_ept, adj_Xinout                 \
-) \
-     do { \
-         tile_fft(backward_function_name, function_name, dtype, shared_memory_size, batch_size, ept, adj_Xinout); \
-     } while (0)
-
-#endif  // !defined(__CUDA_ARCH__)
+// FFT / IFFT macros and implementations live in tile_fft.h. They forward to
+// `wp::tile_fft_entry`, which selects between CPU sequential, GPU cooperative,
+// or cuFFTDx LTO at template-instantiation time based on `wp_is_null_func`.
+// tile_fft.h opens its own `namespace wp { ... }`, so we close the surrounding
+// one to avoid nesting it as `wp::wp`.
+}  // namespace wp
+#include "tile_fft.h"
+namespace wp {
 
 // Cholesky factorization (out-of-place) implementation.
 // Upper=false: produces lower-triangular L s.t. A = L L^T, zeros upper triangle.

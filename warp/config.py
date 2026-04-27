@@ -192,6 +192,17 @@ This setting can be overridden at the module level by setting the
 ``"enable_mathdx_gemm"`` module option.
 """
 
+enable_mathdx_fft: bool = True
+"""Use libmathdx (cuFFTDx) for tile_fft / tile_ifft on GPU when available.
+
+When False, tile_fft / tile_ifft fall back to a cooperative shared-memory
+radix-2 implementation that does not require libmathdx, at the cost of runtime
+performance. The fallback supports power-of-two FFT sizes only.
+
+This setting can be overridden at the module level by setting the
+``"enable_mathdx_fft"`` module option.
+"""
+
 cpu_compiler_flags: str | None = None
 """Flags controlling CPU kernel compilation.
 
