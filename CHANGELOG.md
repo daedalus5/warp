@@ -21,6 +21,16 @@
 
 ### Fixed
 
+- Stabilize `wp.closest_point_edge_edge()` at near-parallel configurations. The
+  internal `denom = a*e - b²` and numerator `b*f - c*e` are now computed via
+  cross products (`|d1×d2|²` and `(d1×d2)·(d2×r)`), preserving precision in
+  float32 down to angles where the previous "1 - cos²" form collapsed into
+  pure roundoff. The "non-degenerate" test uses a relative tolerance against
+  `|d1|²|d2|²`. Forward output is unchanged for well-conditioned inputs and is
+  now well-defined (and gradient-stable) for near-parallel edges, where it
+  could previously return geometrically valid but unstable barycentric
+  weights.
+
 ### Documentation
 
 ## [1.13.0] - 2026-05-04
