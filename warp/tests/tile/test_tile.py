@@ -1382,6 +1382,185 @@ def test_tile_assign(test, device):
     assert_np_equal(x.grad.numpy(), np.full(TILE_M, 1.0, dtype=np.float32))
 
 
+# --------------------------------------------------------------------------- #
+# tile_empty tests                                                            #
+#                                                                             #
+# tile_empty allocates a tile of uninitialized data. The contract matches     #
+# np.empty: contents are undefined, the user must overwrite every element     #
+# before any read. These tests use only safe patterns (full-tile overwrite    #
+# immediately after empty) and never assert on uninitialized contents.        #
+# --------------------------------------------------------------------------- #
+
+TILE_EMPTY_M = wp.constant(16)
+
+
+@wp.kernel
+def tile_empty_register_float_1d_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_M,), dtype=float, storage="register")
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_register_float_1d(test, device):
+    src_data = np.arange(TILE_EMPTY_M, dtype=np.float32)
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_register_float_1d_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+@wp.kernel
+def tile_empty_shared_float_1d_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_M,), dtype=float, storage="shared")
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_shared_float_1d(test, device):
+    src_data = np.arange(TILE_EMPTY_M, dtype=np.float32)
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_shared_float_1d_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+@wp.kernel
+def tile_empty_scalar_shape_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+    a = wp.tile_empty(shape=TILE_EMPTY_M, dtype=float)  # scalar shape, default storage
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_scalar_shape(test, device):
+    src_data = np.arange(TILE_EMPTY_M, dtype=np.float32)
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_scalar_shape_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+TILE_EMPTY_2D_M = wp.constant(8)
+TILE_EMPTY_2D_N = wp.constant(8)
+
+
+@wp.kernel
+def tile_empty_register_float_2d_kernel(src: wp.array2d(dtype=float), dst: wp.array2d(dtype=float)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_2D_M, TILE_EMPTY_2D_N), dtype=float, storage="register")
+    a = wp.tile_load(src, shape=(TILE_EMPTY_2D_M, TILE_EMPTY_2D_N))
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_register_float_2d(test, device):
+    src_data = np.arange(TILE_EMPTY_2D_M * TILE_EMPTY_2D_N, dtype=np.float32).reshape(
+        TILE_EMPTY_2D_M, TILE_EMPTY_2D_N
+    )
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros((TILE_EMPTY_2D_M, TILE_EMPTY_2D_N), dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_register_float_2d_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+@wp.kernel
+def tile_empty_register_int_kernel(src: wp.array(dtype=int), dst: wp.array(dtype=int)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_M,), dtype=int, storage="register")
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_int(test, device):
+    src_data = np.arange(TILE_EMPTY_M, dtype=np.int32)
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.int32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_register_int_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+@wp.kernel
+def tile_empty_register_vec3_kernel(src: wp.array(dtype=wp.vec3), dst: wp.array(dtype=wp.vec3)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_M,), dtype=wp.vec3, storage="register")
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_vec3(test, device):
+    src_data = np.arange(TILE_EMPTY_M * 3, dtype=np.float32).reshape(TILE_EMPTY_M, 3)
+    src = wp.array(src_data, dtype=wp.vec3, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.vec3, device=device)
+
+    wp.launch_tiled(
+        tile_empty_register_vec3_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
+@wp.kernel
+def tile_empty_defaults_kernel(src: wp.array(dtype=float), dst: wp.array(dtype=float)):
+    a = wp.tile_empty(shape=(TILE_EMPTY_M,))  # all defaults: dtype=float, storage="register"
+    a = wp.tile_load(src, shape=TILE_EMPTY_M)
+    wp.tile_store(dst, a)
+
+
+def test_tile_empty_defaults(test, device):
+    src_data = np.arange(TILE_EMPTY_M, dtype=np.float32)
+    src = wp.array(src_data, device=device)
+    dst = wp.zeros(TILE_EMPTY_M, dtype=wp.float32, device=device)
+
+    wp.launch_tiled(
+        tile_empty_defaults_kernel,
+        dim=[1],
+        inputs=[src, dst],
+        block_dim=TILE_DIM,
+        device=device,
+    )
+
+    assert_np_equal(dst.numpy(), src_data)
+
+
 @wp.kernel
 def test_tile_where_kernel(select: int, x: wp.array(dtype=float), y: wp.array(dtype=float), z: wp.array(dtype=float)):
     x_reg = wp.tile_load(x, shape=(TILE_M,), storage="register")
@@ -3148,6 +3327,13 @@ add_function_test(TestTile, "test_tile_sum_launch", test_tile_sum_launch, device
 add_function_test(TestTile, "test_tile_extract", test_tile_extract, devices=devices)
 add_function_test(TestTile, "test_tile_extract_repeated", test_tile_extract_repeated, devices=devices)
 add_function_test(TestTile, "test_tile_assign", test_tile_assign, devices=devices)
+add_function_test(TestTile, "test_tile_empty_register_float_1d", test_tile_empty_register_float_1d, devices=devices)
+add_function_test(TestTile, "test_tile_empty_shared_float_1d", test_tile_empty_shared_float_1d, devices=devices)
+add_function_test(TestTile, "test_tile_empty_scalar_shape", test_tile_empty_scalar_shape, devices=devices)
+add_function_test(TestTile, "test_tile_empty_register_float_2d", test_tile_empty_register_float_2d, devices=devices)
+add_function_test(TestTile, "test_tile_empty_int", test_tile_empty_int, devices=devices)
+add_function_test(TestTile, "test_tile_empty_vec3", test_tile_empty_vec3, devices=devices)
+add_function_test(TestTile, "test_tile_empty_defaults", test_tile_empty_defaults, devices=devices)
 add_function_test(TestTile, "test_tile_where", test_tile_where, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_1d", test_tile_broadcast_add_1d, devices=devices)
 add_function_test(TestTile, "test_tile_broadcast_add_2d", test_tile_broadcast_add_2d, devices=devices)
