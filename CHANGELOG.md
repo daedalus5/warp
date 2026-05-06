@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add :func:`warp.tile_empty` to allocate a tile of uninitialized items, the ``np.empty`` analog of :func:`warp.tile_zeros`. Refactor ``tile_register_t`` to follow the same allocate-then-assign pattern shared tiles already use, so ``tile_zeros`` performs a single loop-fill instead of three.
+- Add :func:`warp.tile_empty` to allocate a tile of uninitialized items, the ``np.empty`` analog of :func:`warp.tile_zeros`. Refactor ``tile_register_t`` to follow the same allocate-then-assign pattern shared tiles already use, so ``tile_zeros`` performs a single loop-fill instead of three ([GH-1312](https://github.com/NVIDIA/warp/issues/1312)).
 - Expose CUDA graph capture mode via `ScopedCapture` / `capture_begin()`
   ([GH-1410](https://github.com/NVIDIA/warp/issues/1410)).
 
