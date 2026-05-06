@@ -816,6 +816,10 @@ template <typename Shape_> struct tile_layout_register_t {
     }
 };
 
+// Tag type used by tile_empty to skip initialization in operator=
+struct tile_no_init_t {};
+inline constexpr tile_no_init_t tile_no_init{};
+
 // forward declaration (needed for converting constructor in tile_register_t)
 template <typename T, typename L, bool Owner> struct tile_shared_t;
 
@@ -861,6 +865,12 @@ template <typename T, typename L> struct tile_register_t {
     {
         for (int i = 0; i < Layout::NumRegs; ++i)
             data[i] = value;
+        return *this;
+    }
+
+    // no-init assignment: leave data unchanged - the rvalue side of tile_empty
+    inline CUDA_CALLABLE auto& operator=(tile_no_init_t)
+    {
         return *this;
     }
 
@@ -1444,6 +1454,12 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
         initialized = true;
         WP_TILE_SYNC();
+        return *this;
+    }
+
+    // no-init assignment: leave data unchanged - the rvalue side of tile_empty
+    inline CUDA_CALLABLE auto& operator=(tile_no_init_t)
+    {
         return *this;
     }
 
