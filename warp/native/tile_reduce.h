@@ -401,7 +401,7 @@ template <int Axis, typename Op, typename Tile> CUDA_CALLABLE_DEVICE auto tile_r
     WP_PRAGMA_UNROLL
     for (int i = 0; i < OutputRegLayout::NumRegs; ++i) {
         int linear = OutputRegLayout::linear_from_register(i);
-        output.data[i] = OutputRegLayout::valid(linear) ? output_buffer[linear] : T{};
+        output.data[i] = OutputRegLayout::valid(linear) ? output_buffer[linear] : T {};
     }
 
     return output;

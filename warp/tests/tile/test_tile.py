@@ -1475,9 +1475,7 @@ def tile_empty_register_float_2d_kernel(src: wp.array2d(dtype=float), dst: wp.ar
 
 
 def test_tile_empty_register_float_2d(test, device):
-    src_data = np.arange(TILE_EMPTY_2D_M * TILE_EMPTY_2D_N, dtype=np.float32).reshape(
-        TILE_EMPTY_2D_M, TILE_EMPTY_2D_N
-    )
+    src_data = np.arange(TILE_EMPTY_2D_M * TILE_EMPTY_2D_N, dtype=np.float32).reshape(TILE_EMPTY_2D_M, TILE_EMPTY_2D_N)
     src = wp.array(src_data, device=device)
     dst = wp.zeros((TILE_EMPTY_2D_M, TILE_EMPTY_2D_N), dtype=wp.float32, device=device)
 
