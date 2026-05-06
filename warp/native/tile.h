@@ -858,6 +858,14 @@ template <typename T, typename L> struct tile_register_t {
         return *this;
     }
 
+    // broadcast a scalar to all elements - mirrors tile_shared_t scalar assignment
+    inline CUDA_CALLABLE auto& operator=(const T& value)
+    {
+        for (int i = 0; i < Layout::NumRegs; ++i)
+            data[i] = value;
+        return *this;
+    }
+
     // define the += operator which is used during backward pass codegen
     // when returning a register tile from a user defined function
     inline CUDA_CALLABLE auto& operator+=(const tile_register_t<T, Layout>& rhs)
