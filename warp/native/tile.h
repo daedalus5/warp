@@ -2453,6 +2453,15 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_zeros()
     return T {};
 }
 
+// uninitialized tile
+template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_empty()
+{
+    // tile variable assignment operator will route to operator=(tile_no_init_t),
+    // leaving the LHS uninitialized. Caller is responsible for overwriting
+    // every element before any read - matches np.empty semantics.
+    return tile_no_init_t{};
+}
+
 // one-initialized tile
 template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_ones()
 {
