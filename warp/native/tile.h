@@ -826,14 +826,12 @@ template <typename T, typename L> struct tile_register_t {
 
     T data[Layout::NumRegs];
 
-    inline CUDA_CALLABLE tile_register_t(T value = T {})
-    {
-        // zero-initialize by default necessary for tile adjoints
-        // need to check if this results in worse codegen
-        // than doing adj_var = tile_zeros() explicitly
-        // in backwards pass and letting default constructor
-        // avoid initialization
+    // default ctor: leaves data uninitialized (mirrors tile_alloc_empty for shared tiles)
+    inline CUDA_CALLABLE tile_register_t() {}
 
+    // value-broadcasting ctor: explicitly fill every element
+    inline CUDA_CALLABLE explicit tile_register_t(const T& value)
+    {
         for (int i = 0; i < Layout::NumRegs; ++i)
             data[i] = value;
     }
@@ -1041,16 +1039,16 @@ template <typename Tile> auto tile_register_like(Tile* t = nullptr)
 template <typename Shape, typename T> inline CUDA_CALLABLE auto tile_register_like()
 {
     if constexpr (is_tile_type<T>::value) {
-        return tile_register_t<typename T::Type, tile_layout_register_t<Shape>>();
+        return tile_register_t<typename T::Type, tile_layout_register_t<Shape>>(typename T::Type{});
     } else {
-        return tile_register_t<T, tile_layout_register_t<Shape>>();
+        return tile_register_t<T, tile_layout_register_t<Shape>>(T{});
     }
 }
 
 // helper to construct a register tile from a type and a list of dims
 template <typename T, int... Dims> auto tile_register()
 {
-    return tile_register_t<T, tile_layout_register_t<tile_shape_t<Dims...>>>();
+    return tile_register_t<T, tile_layout_register_t<tile_shape_t<Dims...>>>(T{});
 }
 
 inline CUDA_CALLABLE int tile_align(int num_bytes)
@@ -2487,7 +2485,7 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thr
 // tile initialized with random integers
 template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng)
 {
-    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>(int{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2511,7 +2509,7 @@ template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng)
 // tile initialized with random integers in range [min, max)
 template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng, int min, int max)
 {
-    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>();
+    auto out = tile_register_t<int, tile_layout_register_t<tile_shape_t<Shape...>>>(int{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2535,7 +2533,7 @@ template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randi(uint32 rng, in
 // tile initialized with random floats in range [0, 1)
 template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng)
 {
-    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>(float32{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2559,7 +2557,7 @@ template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng)
 // tile initialized with random floats in range [min, max)
 template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng, float min, float max)
 {
-    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>();
+    auto out = tile_register_t<float32, tile_layout_register_t<tile_shape_t<Shape...>>>(float32{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -2655,7 +2653,7 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
 template <unsigned... Shape, typename T, typename IndicesTile, typename... Offset>
 inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indices, int axis, Offset... offset)
 {
-    auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>();
+    auto out = tile_register_t<T, tile_layout_register_t<tile_shape_t<Shape...>>>(T{});
     auto offset_coord = tile_coord(offset...);
 
     out.apply([&](int reg, auto c) {
@@ -3443,7 +3441,7 @@ template <typename Tile, typename Fwd> inline CUDA_CALLABLE auto tile_map(Fwd op
 
     // Deduce return type from operation result
     using ReturnType = decltype(op(a_reg.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -3485,7 +3483,7 @@ template <typename TileA, typename B, typename Fwd> inline CUDA_CALLABLE auto ti
 
     // Deduce return type from operation result
     using ReturnType = decltype(op(a_reg.data[0], b_reg.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
 
     using Layout = typename decltype(out)::Layout;
 
@@ -3536,7 +3534,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3)
     auto r2 = to_tile<Shape>(t2);
     auto r3 = to_tile<Shape>(t3);
     using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3554,7 +3552,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4)
     auto r3 = to_tile<Shape>(t3);
     auto r4 = to_tile<Shape>(t4);
     using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3573,7 +3571,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
     auto r4 = to_tile<Shape>(t4);
     auto r5 = to_tile<Shape>(t5);
     using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3593,7 +3591,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
     auto r5 = to_tile<Shape>(t5);
     auto r6 = to_tile<Shape>(t6);
     using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3614,7 +3612,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
     auto r6 = to_tile<Shape>(t6);
     auto r7 = to_tile<Shape>(t7);
     using ReturnType = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0], r7.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)
@@ -3646,7 +3644,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
     auto r8 = to_tile<Shape>(t8);
     using ReturnType
         = decltype(op(r1.data[0], r2.data[0], r3.data[0], r4.data[0], r5.data[0], r6.data[0], r7.data[0], r8.data[0]));
-    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>();
+    auto out = tile_register_t<ReturnType, tile_layout_register_t<Shape>>(ReturnType{});
     using Layout = typename decltype(out)::Layout;
     WP_PRAGMA_UNROLL
     for (int i = 0; i < Layout::NumRegs; ++i)

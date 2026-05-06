@@ -4673,9 +4673,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu"):
 
         if is_tile(var.type):
             if var.type.storage == "register":
+                dtype_ctype = Var.type_to_ctype(var.type.dtype)
                 lines += [
-                    f"{var.type.ctype()} {name}{{}};\n"
-                ]  # reverse mode tiles alias the forward vars since shared tiles store both primal/dual vars together
+                    f"{var.type.ctype()} {name}({dtype_ctype}{{}});\n"
+                ]  # adjoint register tiles must be zero-initialized for gradient accumulation
             elif var.type.storage == "shared":
                 lines += [
                     f"{var.type.ctype()}& {name} = {var.emit()};\n"
