@@ -1687,11 +1687,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         WP_PRAGMA_UNROLL
         for (int i = 0; i < Tile::Layout::NumRegs; ++i) {
             const int linear = Tile::Layout::linear_from_register(i);
-
-            if (!Tile::Layout::valid(linear))
-                break;
-
-            out(i) = grad(linear);
+            out(i) = Tile::Layout::valid(linear) ? grad(linear) : T{};
         }
 
         return out;
