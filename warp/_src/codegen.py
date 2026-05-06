@@ -2035,6 +2035,8 @@ class Adjoint:
             if is_tile(i.type):
                 if i.type.owner:
                     reverse.append(adj.indentation + f"\t{i.emit_adj()}.grad_zero();")
+                # non-owner tile adjoints alias the parent tile's adjoint memory;
+                # the parent's grad_zero() above handles their reset — no action needed here
             else:
                 reverse.append(adj.indentation + f"\t{i.emit_adj()} = {{}};")
 
@@ -2096,7 +2098,13 @@ class Adjoint:
 
         # zero adjoints of local vars
         for i in body_block.vars:
-            reverse.append(f"{i.emit_adj()} = {{}};")
+            if is_tile(i.type):
+                if i.type.owner:
+                    reverse.append(f"{i.emit_adj()}.grad_zero();")
+                # non-owner tile adjoints alias the parent tile's adjoint memory;
+                # the parent's grad_zero() above handles their reset — no action needed here
+            else:
+                reverse.append(f"{i.emit_adj()} = {{}};")
 
         # replay
         for i in body_block.body_replay:
