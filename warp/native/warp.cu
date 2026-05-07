@@ -4591,6 +4591,56 @@ bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size)
     return true;
 }
 
+bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz)
+{
+    if (!kernel)
+        return false;
+
+    int total = cx * cy * cz;
+    if (total <= 1)
+        return true;  // (1,1,1) and other unit shapes are pure no-ops.
+
+    if (total > 8) {
+        // CU_FUNC_ATTRIBUTE_NON_PORTABLE_CLUSTER_SIZE_ALLOWED == 14
+        // (defined in CUDA 12.0 headers; declared as a constant here to
+        // decouple from any future header reorg).
+        const CUfunction_attribute non_portable_attr =
+            (CUfunction_attribute)14;
+        CUresult res = cuFuncSetAttribute_f((CUfunction)kernel, non_portable_attr, 1);
+        if (res != CUDA_SUCCESS)
+            return false;
+    }
+
+    return true;
+}
+
+int wp_cuda_get_max_cluster_size(void* context, void* kernel, int block_dim, int dynamic_smem_bytes)
+{
+    if (!kernel || !context)
+        return 1;
+
+    ContextGuard guard(context);
+
+    CUlaunchConfig config = {};
+    config.gridDimX = 1;
+    config.gridDimY = 1;
+    config.gridDimZ = 1;
+    config.blockDimX = (unsigned int)block_dim;
+    config.blockDimY = 1;
+    config.blockDimZ = 1;
+    config.sharedMemBytes = (unsigned int)dynamic_smem_bytes;
+    config.hStream = 0;
+    config.attrs = nullptr;
+    config.numAttrs = 0;
+
+    int cluster_size = 1;
+    CUresult res = cuOccupancyMaxPotentialClusterSize_f(&cluster_size, (CUfunction)kernel, &config);
+    if (res != CUDA_SUCCESS)
+        return 1;
+
+    return cluster_size > 1 ? cluster_size : 1;
+}
+
 void* wp_cuda_get_kernel(void* context, void* module, const char* name)
 {
     ContextGuard guard(context);

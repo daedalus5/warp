@@ -319,6 +319,8 @@ from warp._src.utils import ScopedMempool as ScopedMempool
 from warp._src.utils import ScopedMempoolAccess as ScopedMempoolAccess
 from warp._src.utils import ScopedPeerAccess as ScopedPeerAccess
 
+from warp._src.context import get_max_cluster_size as get_max_cluster_size
+from warp._src.context import is_cluster_supported as is_cluster_supported
 from warp._src.context import is_mempool_supported as is_mempool_supported
 from warp._src.context import is_mempool_enabled as is_mempool_enabled
 from warp._src.context import set_mempool_enabled as set_mempool_enabled

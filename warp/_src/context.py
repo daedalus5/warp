@@ -783,6 +783,52 @@ class KernelHooks:
         self.backward_smem_bytes = backward_smem_bytes
 
 
+# Maximum cluster size (CTA count) supported on Hopper, including the
+# non-portable range (9-16). Blackwell may permit larger; revisit then.
+_MAX_CLUSTER_SIZE = 16
+
+
+def _normalize_cluster_dim(value) -> tuple[int, int, int]:
+    """Validate and canonicalize a ``cluster_dim`` decorator value.
+
+    Accepts an ``int`` (broadcast to ``(N, 1, 1)``) or a 3-element tuple/list of
+    positive ``int`` values whose product does not exceed ``_MAX_CLUSTER_SIZE``.
+
+    Returns the canonical ``tuple[int, int, int]``.
+
+    Raises ``ValueError`` (or ``TypeError`` for non-numeric input) on any
+    invalid value.
+    """
+    if isinstance(value, bool):
+        # bool is a subclass of int; reject early to avoid surprising broadcasts.
+        raise TypeError(f"cluster_dim must be int or 3-tuple of ints, got bool {value!r}")
+    if isinstance(value, int):
+        components = (value, 1, 1)
+    elif isinstance(value, (tuple, list)):
+        if len(value) != 3:
+            raise ValueError(f"cluster_dim must be a 3-element tuple/list, got length {len(value)}: {value!r}")
+        components = tuple(value)
+    else:
+        raise TypeError(f"cluster_dim must be int or 3-tuple of ints, got {type(value).__name__}: {value!r}")
+
+    canonical = []
+    for i, c in enumerate(components):
+        if isinstance(c, bool) or not isinstance(c, int):
+            raise TypeError(f"cluster_dim component {i} must be int, got {type(c).__name__}: {c!r}")
+        if c < 1:
+            raise ValueError(f"cluster_dim components must be >= 1, got {value!r} (component {i} = {c})")
+        canonical.append(c)
+
+    total = canonical[0] * canonical[1] * canonical[2]
+    if total > _MAX_CLUSTER_SIZE:
+        raise ValueError(
+            f"cluster_dim product must be <= {_MAX_CLUSTER_SIZE} (Hopper non-portable cap), "
+            f"got {value!r} with total={total}"
+        )
+
+    return (canonical[0], canonical[1], canonical[2])
+
+
 # caches source and compiled entry points for a kernel (will be populated after module loads)
 class Kernel:
     """Warp kernel object, typically created by decorating a Python function with :func:`@wp.kernel <warp.kernel>`.
@@ -1271,6 +1317,7 @@ def kernel(
     *,
     enable_backward: bool | None = None,
     launch_bounds: tuple[int, ...] | int | None = None,
+    cluster_dim: tuple[int, int, int] | int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
 ):
@@ -1326,6 +1373,17 @@ def kernel(
             kernels. Note: The ``block_dim`` parameter in
             :func:`warp.launch` must not exceed the
             ``maxThreadsPerBlock`` value specified here.
+        cluster_dim: CUDA Thread Block Cluster shape ``(X, Y, Z)``,
+            specifying how many adjacent CTAs the hardware should
+            schedule co-resident on a single GPC. Accepts an ``int``
+            (broadcast to ``(N, 1, 1)``) or a 3-tuple/list of positive
+            ints. Total cluster size (``X*Y*Z``) must be <= 16
+            (Hopper non-portable cap). Default ``(1, 1, 1)`` means no
+            clustering. Only effective on devices with compute
+            capability >= 9.0; silently ignored on older archs and on
+            CPU. Mirrors the ``__cluster_dims__`` CUDA function
+            attribute. See ``warp.is_cluster_supported`` and
+            ``warp.get_max_cluster_size``.
         module: The :class:`warp._src.context.Module` to which the
             kernel belongs. Alternatively, if a string ``"unique"`` is
             provided, the kernel is assigned to a new module named
@@ -1351,6 +1409,9 @@ def kernel(
 
         if launch_bounds is not None:
             kernel_options["launch_bounds"] = launch_bounds
+
+        if cluster_dim is not None:
+            kernel_options["cluster_dim"] = _normalize_cluster_dim(cluster_dim)
 
         # Resolve the module for this kernel
         if module is None:
@@ -2088,6 +2149,17 @@ class ModuleHasher:
         ch.update(bytes(kernel.key, "utf-8"))
         ch.update(self.hash_adjoint(kernel.adj))
 
+        # Include per-kernel options (e.g. cluster_dim, launch_bounds) so that
+        # two kernels with identical source but different options get distinct
+        # hashes.  Values are stringified, so option types must have a
+        # deterministic ``str()`` (built-in scalars, tuples of scalars, bools,
+        # etc.).  Don't add options whose ``str()`` includes id-based output
+        # (e.g. ``<object at 0x...>``); the hash would still be stable within
+        # a process but unstable across runs.
+        for opt in sorted(kernel.options.keys()):
+            s = f"{opt}:{kernel.options[opt]}"
+            ch.update(bytes(s, "utf-8"))
+
         h = ch.digest()
 
         self.unique_kernels[h] = kernel
@@ -2484,6 +2556,32 @@ class ModuleExec:
                 print(
                     f"Warning: Failed to configure kernel dynamic shared memory for this device, tried to configure {backward_name} kernel for {backward_smem_bytes} bytes, but maximum available is {max_smem_bytes}"
                 )
+
+            # Set CUDA Thread Block Cluster attributes on the loaded
+            # CUfunction(s). For cluster sizes > 8 (non-portable range on
+            # Hopper), this opts in via cuFuncSetAttribute. For sizes <= 8 the
+            # native helper is a no-op, but we still skip the call when the
+            # default (1, 1, 1) is in effect to avoid an unnecessary FFI hop.
+            # On sub-Hopper devices (arch < 90) the WP_CLUSTER_DIMS macro is
+            # a no-op (guarded by __CUDA_ARCH__ >= 900 in codegen), so the
+            # runtime opt-in is not just unnecessary but would fail with a
+            # misleading warning that contradicts the "silently ignored" docs
+            # contract for cluster_dim on non-cluster-capable hardware.
+            cluster_dim = options.get("cluster_dim", (1, 1, 1))
+            if cluster_dim != (1, 1, 1) and self.device.arch >= 90:
+                cx, cy, cz = cluster_dim
+                if not runtime.core.wp_cuda_set_kernel_cluster_attrs(forward_kernel, cx, cy, cz):
+                    print(
+                        f"Warning: Failed to set cluster attributes on {forward_name} for "
+                        f"cluster_dim={cluster_dim}; launches may fail on this device"
+                    )
+                if options["enable_backward"] and not runtime.core.wp_cuda_set_kernel_cluster_attrs(
+                    backward_kernel, cx, cy, cz
+                ):
+                    print(
+                        f"Warning: Failed to set cluster attributes on {backward_name} for "
+                        f"cluster_dim={cluster_dim}; launches may fail on this device"
+                    )
 
             hooks = KernelHooks(forward_kernel, backward_kernel, forward_smem_bytes, backward_smem_bytes)
 
@@ -5712,6 +5810,22 @@ class Runtime:
             self.core.wp_cuda_configure_kernel_shared_memory.argtypes = [ctypes.c_void_p, ctypes.c_int]
             self.core.wp_cuda_configure_kernel_shared_memory.restype = ctypes.c_bool
 
+            self.core.wp_cuda_set_kernel_cluster_attrs.argtypes = [
+                ctypes.c_void_p,  # kernel (CUfunction)
+                ctypes.c_int,  # cx
+                ctypes.c_int,  # cy
+                ctypes.c_int,  # cz
+            ]
+            self.core.wp_cuda_set_kernel_cluster_attrs.restype = ctypes.c_bool
+
+            self.core.wp_cuda_get_max_cluster_size.argtypes = [
+                ctypes.c_void_p,  # context
+                ctypes.c_void_p,  # kernel (CUfunction)
+                ctypes.c_int,  # block_dim
+                ctypes.c_int,  # dynamic_smem_bytes
+            ]
+            self.core.wp_cuda_get_max_cluster_size.restype = ctypes.c_int
+
             self.core.wp_cuda_get_suggested_block_size.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -6596,6 +6710,73 @@ def is_mempool_enabled(device: DeviceLike) -> bool:
     device = runtime.get_device(device)
 
     return device.is_mempool_enabled
+
+
+def is_cluster_supported(device: DeviceLike = None) -> bool:
+    """Return True if *device* supports CUDA Thread Block Clusters.
+
+    Clusters require a CUDA device with compute capability 9.0 or higher
+    (Hopper, Blackwell). Returns False on CPU and on older CUDA archs.
+    """
+    init()
+
+    device = runtime.get_device(device)
+    return device.is_cuda and device.arch >= 90
+
+
+def get_max_cluster_size(
+    kernel,
+    device: DeviceLike = None,
+    *,
+    block_dim: int | None = None,
+    dynamic_smem_bytes: int = 0,
+) -> int:
+    """Return the maximum cluster size (CTA count) usable for *kernel* on *device*.
+
+    Wraps the CUDA driver's ``cuOccupancyMaxPotentialClusterSize`` query, which
+    accounts for the kernel's register usage and shared-memory footprint.
+
+    Args:
+        kernel: A ``@wp.kernel``-decorated kernel instance.
+        device: Target device. Defaults to the current device.
+        block_dim: Threads per block at launch. If ``None``, uses the kernel's
+            module-resolved ``block_dim``.
+        dynamic_smem_bytes: Dynamic shared memory bytes used at launch.
+
+    Returns:
+        The maximum cluster size as a 1D CTA count. Returns ``1`` on devices
+        with compute capability < 9.0, on non-CUDA devices, and on driver error.
+    """
+    init()
+
+    device = runtime.get_device(device)
+    if not device.is_cuda or device.arch < 90:
+        return 1
+
+    if block_dim is None:
+        block_dim = kernel.module.options.get("block_dim", 256)
+
+    # ``Module.load(device, block_dim)`` mutates ``module.options["block_dim"]``
+    # as a side effect.  Snapshot and restore so this query helper has no
+    # observable effect on subsequent launches that don't pass ``block_dim``.
+    prior_block_dim = kernel.module.options["block_dim"]
+    try:
+        module_exec = kernel.module.load(device, block_dim)
+        if module_exec is None:
+            return 1
+
+        hooks = module_exec.get_kernel_hooks(kernel)
+        forward_handle = hooks.forward
+        if not forward_handle:
+            return 1
+
+        return int(
+            runtime.core.wp_cuda_get_max_cluster_size(
+                device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
+            )
+        )
+    finally:
+        kernel.module.options["block_dim"] = prior_block_dim
 
 
 def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:

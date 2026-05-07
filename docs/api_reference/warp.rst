@@ -392,9 +392,11 @@ CUDA Memory Management
    ScopedMempoolAccess
    ScopedPeerAccess
    get_device_allocator
+   get_max_cluster_size
    get_mempool_release_threshold
    get_mempool_used_mem_current
    get_mempool_used_mem_high
+   is_cluster_supported
    is_mempool_access_enabled
    is_mempool_access_supported
    is_mempool_enabled

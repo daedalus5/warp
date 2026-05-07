@@ -162,6 +162,7 @@ CUresult cuGraphicsSubResourceGetMappedArray_f(
 );
 CUresult cuGraphicsUnregisterResource_f(CUgraphicsResource resource);
 CUresult cuModuleGetGlobal_f(CUdeviceptr* dptr, size_t* bytes, CUmodule hmod, const char* name);
+CUresult cuOccupancyMaxPotentialClusterSize_f(int* clusterSize, CUfunction func, const CUlaunchConfig* config);
 CUresult cuFuncSetAttribute_f(CUfunction hfunc, CUfunction_attribute attrib, int value);
 CUresult cuIpcGetEventHandle_f(CUipcEventHandle* pHandle, CUevent event);
 CUresult cuIpcOpenEventHandle_f(CUevent* phEvent, CUipcEventHandle handle);

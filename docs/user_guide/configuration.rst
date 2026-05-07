@@ -163,3 +163,34 @@ Kernel-level settings can be passed as arguments to the :func:`@wp.kernel <warp.
         # fast_math is applied to this kernel's unique module
         tid = wp.tid()
         b[tid] = a[tid] + 1.0
+
+.. _kernel-cluster-dim:
+
+CUDA Thread Block Clusters
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+CUDA Thread Block Clusters group adjacent CTAs into clusters that the hardware
+schedules co-resident on a single GPC. Clusters are supported on devices with
+compute capability 9.0 (Hopper) and above.
+
+The cluster shape is declared per-kernel via the ``cluster_dim`` decorator
+argument:
+
+.. code-block:: python
+
+    @wp.kernel(cluster_dim=(2, 1, 1))
+    def my_kernel(a: wp.array(dtype=float)):
+        i = wp.tid()
+        a[i] = a[i] * 2.0
+
+``cluster_dim`` accepts either an ``int`` (broadcast to ``(N, 1, 1)``) or a
+3-element tuple/list of positive ints whose product does not exceed 16. The
+default ``(1, 1, 1)`` means no clustering.
+
+On devices with compute capability < 9.0 (and on CPU), ``cluster_dim`` is
+silently ignored — the kernel runs unclustered. This makes portable code
+straightforward: setting ``cluster_dim`` is always safe.
+
+Use :func:`warp.is_cluster_supported` to check whether a device supports
+clusters, and :func:`warp.get_max_cluster_size` to query the maximum cluster
+size for a specific kernel.

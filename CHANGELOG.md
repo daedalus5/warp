@@ -16,6 +16,7 @@
 - Add `--sanitize=<name>` build option to `build_lib.py`, enabling AddressSanitizer builds of
   `warp.dll` and `warp-clang.dll` on Windows, Linux, and macOS
   ([GH-1387](https://github.com/NVIDIA/warp/issues/1387)).
+- Add ``cluster_dim`` decorator option for ``@wp.kernel`` to enable CUDA Thread Block Clusters on devices with compute capability 9.0 and higher, plus ``warp.is_cluster_supported`` and ``warp.get_max_cluster_size`` query helpers ([GH-1401](https://github.com/NVIDIA/warp/issues/1401)).
 
 ### Removed
 

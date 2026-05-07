@@ -139,6 +139,18 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_bool import TestBool
     from warp.tests.test_builtins_resolution import TestBuiltinsResolution
     from warp.tests.test_closest_point_edge_edge import TestClosestPointEdgeEdgeMethods
+    from warp.tests.test_cluster_dim import (
+        TestClusterDimCodegen,
+        TestClusterDimCpuFallback,
+        TestClusterDimCrossArch,
+        TestClusterDimDecorator,
+        TestClusterDimFunctional,
+        TestClusterDimModuleHash,
+        TestClusterDimNormalize,
+        TestClusterDimQueries,
+        TestClusterDimRuntime,
+        TestClusterDimRuntimeOptIn,
+    )
     from warp.tests.test_codegen import TestCodeGen
     from warp.tests.test_codegen_instancing import TestCodeGenInstancing
     from warp.tests.test_compilation import TestCompilation
@@ -253,6 +265,16 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCaptureMode,
         TestClangCUDA,
         TestClosestPointEdgeEdgeMethods,
+        TestClusterDimCodegen,
+        TestClusterDimCpuFallback,
+        TestClusterDimCrossArch,
+        TestClusterDimDecorator,
+        TestClusterDimFunctional,
+        TestClusterDimModuleHash,
+        TestClusterDimNormalize,
+        TestClusterDimQueries,
+        TestClusterDimRuntime,
+        TestClusterDimRuntimeOptIn,
         TestCodeGen,
         TestCodeGenInstancing,
         TestCompilation,

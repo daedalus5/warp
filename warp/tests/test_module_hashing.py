@@ -309,6 +309,27 @@ class TestOptionResolution(unittest.TestCase):
             wp.config.verify_fp = old
 
 
+class TestModuleHasherKernelOptions(unittest.TestCase):
+    """Regression tests: kernel.options must participate in ModuleHasher."""
+
+    def test_kernel_options_hashed(self):
+        # Two kernels with identical bodies but different launch_bounds must
+        # produce different module hashes.  Before the fix, kernel.options was
+        # not fed into ContentHash, so both hashes collided.
+        def make(bounds):
+            @wp.kernel(launch_bounds=bounds, module="unique")
+            def k(a: wp.array(dtype=int)):
+                i = wp.tid()
+                a[i] = i
+
+            return k
+
+        h_a = make(64).module.get_module_hash()
+        h_b = make(128).module.get_module_hash()
+        # Without the fix, these would collide because kernel name and body match.
+        self.assertNotEqual(h_a, h_b)
+
+
 class TestModuleHashing(unittest.TestCase):
     pass
 
