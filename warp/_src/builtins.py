@@ -4525,6 +4525,9 @@ def tile_extract_value_func(arg_types, arg_values):
     elif type_is_matrix(tile_dtype):
         if num_indices == len(tile_shape):
             return tile_dtype
+        elif num_indices == len(tile_shape) + 1:
+            # row extract: returns a vector of length = matrix column count
+            return vector(length=tile_dtype._shape_[1], dtype=tile_dtype._wp_scalar_type_)
         elif num_indices == len(tile_shape) + 2:
             return tile_dtype._wp_scalar_type_
         else:

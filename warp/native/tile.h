@@ -4429,6 +4429,14 @@ template <typename Tile> auto tile_extract(Tile& t, int i, int j)
 {
     if constexpr (is_vector<typename Tile::Type>::value) {
         return t.extract(tile_coord(i))[j];
+    } else if constexpr (is_matrix<typename Tile::Type>::value) {
+        if constexpr (Tile::Layout::Shape::N == 1) {
+            // 1D mat tile + row index → row vec
+            return t.extract(tile_coord(i)).get_row(j);
+        } else {
+            // 2D mat tile + 2 indices → whole mat
+            return t.extract(tile_coord(i, j));
+        }
     } else {
         return t.extract(tile_coord(i, j));
     }
@@ -4438,7 +4446,13 @@ template <typename Tile> auto tile_extract(Tile& t, int i, int j, int k)
     if constexpr (is_vector<typename Tile::Type>::value) {
         return t.extract(tile_coord(i, j))[k];
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        return t.extract(tile_coord(i)).data[j][k];
+        if constexpr (Tile::Layout::Shape::N == 1) {
+            return t.extract(tile_coord(i)).data[j][k];  // scalar (existing behaviour)
+        } else if constexpr (Tile::Layout::Shape::N == 2) {
+            return t.extract(tile_coord(i, j)).get_row(k);  // 2D mat tile + row index → row vec (new)
+        } else {
+            return t.extract(tile_coord(i, j, k));  // 3D mat tile → whole mat
+        }
     } else {
         return t.extract(tile_coord(i, j, k));
     }
@@ -4448,7 +4462,13 @@ template <typename Tile> auto tile_extract(Tile& t, int i, int j, int k, int l)
     if constexpr (is_vector<typename Tile::Type>::value) {
         return t.extract(tile_coord(i, j, k))[l];
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        return t.extract(tile_coord(i, j)).data[k][l];
+        if constexpr (Tile::Layout::Shape::N == 2) {
+            return t.extract(tile_coord(i, j)).data[k][l];  // scalar (existing behaviour)
+        } else if constexpr (Tile::Layout::Shape::N == 3) {
+            return t.extract(tile_coord(i, j, k)).get_row(l);  // 3D mat tile + row index → row vec (new)
+        } else {
+            return t.extract(tile_coord(i, j, k, l));  // 4D mat tile → whole mat
+        }
     } else {
         return t.extract(tile_coord(i, j, k, l));
     }
@@ -4458,18 +4478,33 @@ template <typename Tile> auto tile_extract(Tile& t, int i, int j, int k, int l, 
     if constexpr (is_vector<typename Tile::Type>::value) {
         return t.extract(tile_coord(i, j, k, l))[m];
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        return t.extract(tile_coord(i, j, k)).data[l][m];
+        if constexpr (Tile::Layout::Shape::N == 3) {
+            return t.extract(tile_coord(i, j, k)).data[l][m];  // scalar (existing behaviour)
+        } else if constexpr (Tile::Layout::Shape::N == 4) {
+            return t.extract(tile_coord(i, j, k, l)).get_row(m);  // 4D mat tile + row index → row vec (new)
+        } else {
+            static_assert(
+                always_false<Tile>::value,
+                "tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D-4D tile)"
+            );
+        }
     } else {
         static_assert(
             always_false<Tile>::value,
-            "tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)"
+            "tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D-4D tile)"
         );
     }
 }
 template <typename Tile> auto tile_extract(Tile& t, int i, int j, int k, int l, int m, int n)
 {
     if constexpr (is_matrix<typename Tile::Type>::value) {
-        return t.extract(tile_coord(i, j, k, l)).data[m][n];
+        if constexpr (Tile::Layout::Shape::N == 4) {
+            return t.extract(tile_coord(i, j, k, l)).data[m][n];  // scalar (existing behaviour)
+        } else {
+            static_assert(
+                always_false<Tile>::value, "tile_extract with 6 indices requires a tile of matrices (4D tile)"
+            );
+        }
     } else {
         static_assert(always_false<Tile>::value, "tile_extract with 6 indices requires a tile of matrices (4D tile)");
     }
@@ -4487,6 +4522,15 @@ void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_
         typename Tile::Type vector_adj {};
         vector_adj[j] = adj_ret;
         adj_t.adj_extract(tile_coord(i), vector_adj);
+    } else if constexpr (is_matrix<typename Tile::Type>::value) {
+        if constexpr (Tile::Layout::Shape::N == 1) {
+            // row-extract adjoint: place adj_ret into row j of a zero matrix
+            typename Tile::Type matrix_adj {};
+            matrix_adj.set_row(j, adj_ret);
+            adj_t.adj_extract(tile_coord(i), matrix_adj);
+        } else {
+            adj_t.adj_extract(tile_coord(i, j), adj_ret);
+        }
     } else {
         adj_t.adj_extract(tile_coord(i, j), adj_ret);
     }
@@ -4499,9 +4543,19 @@ void adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, i
         vector_adj[k] = adj_ret;
         adj_t.adj_extract(tile_coord(i, j), vector_adj);
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        typename Tile::Type matrix_adj {};
-        matrix_adj.data[j][k] = adj_ret;
-        adj_t.adj_extract(tile_coord(i), matrix_adj);
+        if constexpr (Tile::Layout::Shape::N == 1) {
+            // scalar-extract adjoint (existing)
+            typename Tile::Type matrix_adj {};
+            matrix_adj.data[j][k] = adj_ret;
+            adj_t.adj_extract(tile_coord(i), matrix_adj);
+        } else if constexpr (Tile::Layout::Shape::N == 2) {
+            // row-extract adjoint for 2D mat tile
+            typename Tile::Type matrix_adj {};
+            matrix_adj.set_row(k, adj_ret);
+            adj_t.adj_extract(tile_coord(i, j), matrix_adj);
+        } else {
+            adj_t.adj_extract(tile_coord(i, j, k), adj_ret);
+        }
     } else {
         adj_t.adj_extract(tile_coord(i, j, k), adj_ret);
     }
@@ -4516,9 +4570,19 @@ void adj_tile_extract(
         vector_adj[l] = adj_ret;
         adj_t.adj_extract(tile_coord(i, j, k), vector_adj);
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        typename Tile::Type matrix_adj {};
-        matrix_adj.data[k][l] = adj_ret;
-        adj_t.adj_extract(tile_coord(i, j), matrix_adj);
+        if constexpr (Tile::Layout::Shape::N == 2) {
+            // scalar-extract adjoint (existing)
+            typename Tile::Type matrix_adj {};
+            matrix_adj.data[k][l] = adj_ret;
+            adj_t.adj_extract(tile_coord(i, j), matrix_adj);
+        } else if constexpr (Tile::Layout::Shape::N == 3) {
+            // row-extract adjoint for 3D mat tile
+            typename Tile::Type matrix_adj {};
+            matrix_adj.set_row(l, adj_ret);
+            adj_t.adj_extract(tile_coord(i, j, k), matrix_adj);
+        } else {
+            adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret);
+        }
     } else {
         adj_t.adj_extract(tile_coord(i, j, k, l), adj_ret);
     }
@@ -4545,13 +4609,26 @@ void adj_tile_extract(
         vector_adj[m] = adj_ret;
         adj_t.adj_extract(tile_coord(i, j, k, l), vector_adj);
     } else if constexpr (is_matrix<typename Tile::Type>::value) {
-        typename Tile::Type matrix_adj {};
-        matrix_adj.data[l][m] = adj_ret;
-        adj_t.adj_extract(tile_coord(i, j, k), matrix_adj);
+        if constexpr (Tile::Layout::Shape::N == 3) {
+            // scalar-extract adjoint (existing)
+            typename Tile::Type matrix_adj {};
+            matrix_adj.data[l][m] = adj_ret;
+            adj_t.adj_extract(tile_coord(i, j, k), matrix_adj);
+        } else if constexpr (Tile::Layout::Shape::N == 4) {
+            // row-extract adjoint for 4D mat tile
+            typename Tile::Type matrix_adj {};
+            matrix_adj.set_row(m, adj_ret);
+            adj_t.adj_extract(tile_coord(i, j, k, l), matrix_adj);
+        } else {
+            static_assert(
+                always_false<Tile>::value,
+                "adj_tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D-4D tile)"
+            );
+        }
     } else {
         static_assert(
             always_false<Tile>::value,
-            "adj_tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D tile)"
+            "adj_tile_extract with 5 indices requires a tile of vectors (4D tile) or matrices (3D-4D tile)"
         );
     }
 }
@@ -4575,9 +4652,16 @@ void adj_tile_extract(
 )
 {
     if constexpr (is_matrix<typename Tile::Type>::value) {
-        typename Tile::Type matrix_adj {};
-        matrix_adj.data[m][n] = adj_ret;
-        adj_t.adj_extract(tile_coord(i, j, k, l), matrix_adj);
+        if constexpr (Tile::Layout::Shape::N == 4) {
+            // scalar-extract adjoint (existing)
+            typename Tile::Type matrix_adj {};
+            matrix_adj.data[m][n] = adj_ret;
+            adj_t.adj_extract(tile_coord(i, j, k, l), matrix_adj);
+        } else {
+            static_assert(
+                always_false<Tile>::value, "adj_tile_extract with 6 indices requires a tile of matrices (4D tile)"
+            );
+        }
     } else {
         static_assert(
             always_false<Tile>::value, "adj_tile_extract with 6 indices requires a tile of matrices (4D tile)"
