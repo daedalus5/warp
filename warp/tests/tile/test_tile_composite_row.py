@@ -362,6 +362,163 @@ def test_tile_mat22_row_write_backward(test, device):
     assert_np_equal(src_rows.grad.numpy(), expected)
 
 
+# ── 1D tile of mat33: augmented-assign row (+=) ──────────────────────────────
+# Load a BLOCK_DIM-element tile of mat33 where every element is all-ones.
+# Each thread adds vec3(1, 2, 3) to row 1 of its slot, then stores back.
+
+
+@wp.kernel
+def _k_tile_mat33_row_iadd_1d(
+    init: wp.array(dtype=wp.mat33),
+    out: wp.array(dtype=wp.mat33),
+):
+    _tile, i = wp.tid()
+    t = wp.tile_load(init, shape=(BLOCK_DIM,), offset=(BLOCK_DIM * _tile,))
+    t[i][1] += wp.vec3(1.0, 2.0, 3.0)
+    out[i] = t[i]
+
+
+def test_tile_mat33_row_iadd_1d(test, device):
+    n = BLOCK_DIM
+    init = np.ones((n, 3, 3), dtype=np.float32)
+    inp = wp.array(init, dtype=wp.mat33, device=device)
+    out = wp.zeros(n, dtype=wp.mat33, device=device)
+    wp.launch_tiled(_k_tile_mat33_row_iadd_1d, dim=[1], inputs=[inp, out], block_dim=n, device=device)
+    wp.synchronize_device()
+    expected = init.copy()
+    expected[:, 1, :] += [1.0, 2.0, 3.0]
+    assert_np_equal(out.numpy(), expected)
+
+
+# ── 1D tile of mat33: augmented-assign row (-=) ──────────────────────────────
+# Each thread subtracts vec3(1, 2, 3) from row 0 of its slot.
+
+
+@wp.kernel
+def _k_tile_mat33_row_isub_1d(
+    init: wp.array(dtype=wp.mat33),
+    out: wp.array(dtype=wp.mat33),
+):
+    _tile, i = wp.tid()
+    t = wp.tile_load(init, shape=(BLOCK_DIM,), offset=(BLOCK_DIM * _tile,))
+    t[i][0] -= wp.vec3(1.0, 2.0, 3.0)
+    out[i] = t[i]
+
+
+def test_tile_mat33_row_isub_1d(test, device):
+    n = BLOCK_DIM
+    init = np.ones((n, 3, 3), dtype=np.float32)
+    inp = wp.array(init, dtype=wp.mat33, device=device)
+    out = wp.zeros(n, dtype=wp.mat33, device=device)
+    wp.launch_tiled(_k_tile_mat33_row_isub_1d, dim=[1], inputs=[inp, out], block_dim=n, device=device)
+    wp.synchronize_device()
+    expected = init.copy()
+    expected[:, 0, :] -= [1.0, 2.0, 3.0]
+    assert_np_equal(out.numpy(), expected)
+
+
+# ── 2D tile of mat33: augmented-assign row (+=) ───────────────────────────────
+
+
+@wp.kernel
+def _k_tile_mat33_row_iadd_2d(
+    init: wp.array2d(dtype=wp.mat33),
+    out: wp.array2d(dtype=wp.mat33),
+):
+    _bi, _bj, idx = wp.tid()
+    row = idx // 2
+    col = idx % 2
+    t = wp.tile_load(init, shape=(2, 2))
+    t[row, col][2] += wp.vec3(10.0, 20.0, 30.0)
+    out[row, col] = t[row, col]
+
+
+def test_tile_mat33_row_iadd_2d(test, device):
+    rows, cols = 2, 2
+    init = np.ones((rows, cols, 3, 3), dtype=np.float32)
+    inp = wp.array(init, dtype=wp.mat33, device=device)
+    out = wp.zeros((rows, cols), dtype=wp.mat33, device=device)
+    wp.launch_tiled(_k_tile_mat33_row_iadd_2d, dim=[1, 1], inputs=[inp, out], block_dim=BLOCK_DIM_2D, device=device)
+    wp.synchronize_device()
+    expected = init.copy()
+    expected[:, :, 2, :] += [10.0, 20.0, 30.0]
+    assert_np_equal(out.numpy(), expected)
+
+
+# ── 3D tile of mat33: augmented-assign row (+=) ───────────────────────────────
+
+
+@wp.kernel
+def _k_tile_mat33_row_iadd_3d(
+    init: wp.array3d(dtype=wp.mat33),
+    out: wp.array3d(dtype=wp.mat33),
+):
+    _tile, idx = wp.tid()
+    i = idx // (D1_3D * D2_3D)
+    j = (idx // D2_3D) % D1_3D
+    k = idx % D2_3D
+    t = wp.tile_load(init, shape=(D0_3D, D1_3D, D2_3D))
+    t[i, j, k][0] += wp.vec3(5.0, 6.0, 7.0)
+    out[i, j, k] = t[i, j, k]
+
+
+def test_tile_mat33_row_iadd_3d(test, device):
+    init = np.ones((D0_3D, D1_3D, D2_3D, 3, 3), dtype=np.float32)
+    inp = wp.array(init, dtype=wp.mat33, device=device)
+    out = wp.zeros((D0_3D, D1_3D, D2_3D), dtype=wp.mat33, device=device)
+    wp.launch_tiled(
+        _k_tile_mat33_row_iadd_3d,
+        dim=[1],
+        inputs=[inp, out],
+        block_dim=BLOCK_DIM_3D,
+        device=device,
+    )
+    wp.synchronize_device()
+    expected = init.copy()
+    expected[:, :, :, 0, :] += [5.0, 6.0, 7.0]
+    assert_np_equal(out.numpy(), expected)
+
+
+# ── Adjoint test: backward through 1D tile-of-mat row iadd (+=) ─────────────
+# Forward: load a BLOCK_DIM-element tile of mat22; each thread does
+#          t[i][1] += src_rows[i] and stores t[i] to out.
+# Backward: inject gradient [[0,0],[g0,g1]] at out; the adjoint of iadd
+#           accumulates the row-1 gradient into adj_src_rows (not zeroed,
+#           unlike assign: adj_src += adj_out row).
+
+
+@wp.kernel
+def _k_tile_mat22_row_iadd_adj(
+    src_rows: wp.array(dtype=wp.vec2),
+    out: wp.array(dtype=wp.mat22),
+):
+    _tile, i = wp.tid()
+    t = wp.tile_zeros(dtype=wp.mat22, shape=(BLOCK_DIM,))
+    t[i][1] += src_rows[i]
+    out[i] = t[i]
+
+
+def test_tile_mat22_row_iadd_backward(test, device):
+    n = BLOCK_DIM
+    src_data = np.ones((n, 2), dtype=np.float32)
+    src_rows = wp.array(src_data, dtype=wp.vec2, requires_grad=True, device=device)
+    out = wp.zeros(n, dtype=wp.mat22, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch_tiled(_k_tile_mat22_row_iadd_adj, dim=[1], inputs=[src_rows, out], block_dim=n, device=device)
+
+    # Seed gradient: only row 1 of each output matrix has non-zero grad
+    grad_out = np.zeros((n, 2, 2), dtype=np.float32)
+    grad_out[:, 1, :] = [4.0, 5.0]
+    out.grad = wp.array(grad_out, dtype=wp.mat22, device=device)
+    tape.backward()
+
+    # adj_src_rows should receive the row-1 gradient from the adjoint tile
+    expected = np.tile([4.0, 5.0], (n, 1))
+    assert_np_equal(src_rows.grad.numpy(), expected)
+
+
 devices = get_cuda_test_devices()
 
 
@@ -382,6 +539,13 @@ add_function_test(TestTileCompositeRow, "test_tile_mat33_row_write_3d", test_til
 add_function_test(TestTileCompositeRow, "test_tile_mat22_row_write_4d", test_tile_mat22_row_write_4d, devices=devices)
 add_function_test(
     TestTileCompositeRow, "test_tile_mat22_row_write_backward", test_tile_mat22_row_write_backward, devices=devices
+)
+add_function_test(TestTileCompositeRow, "test_tile_mat33_row_iadd_1d", test_tile_mat33_row_iadd_1d, devices=devices)
+add_function_test(TestTileCompositeRow, "test_tile_mat33_row_isub_1d", test_tile_mat33_row_isub_1d, devices=devices)
+add_function_test(TestTileCompositeRow, "test_tile_mat33_row_iadd_2d", test_tile_mat33_row_iadd_2d, devices=devices)
+add_function_test(TestTileCompositeRow, "test_tile_mat33_row_iadd_3d", test_tile_mat33_row_iadd_3d, devices=devices)
+add_function_test(
+    TestTileCompositeRow, "test_tile_mat22_row_iadd_backward", test_tile_mat22_row_iadd_backward, devices=devices
 )
 
 

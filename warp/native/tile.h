@@ -5077,34 +5077,98 @@ template <typename Tile> void tile_add_inplace(Tile& t, int i, typename Tile::Ty
 {
     t.add_inplace(tile_coord(i), value);
 }
-template <typename Tile> void tile_add_inplace(Tile& t, int i, int j, typename Tile::Type value)
+// 2-index overload: whole-element write for non-matrix tiles; row += for 1D matrix tiles.
+template <typename Tile, typename Value> void tile_add_inplace(Tile& t, int i, int j, Value value)
 {
-    t.add_inplace(tile_coord(i, j), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 1) {
+        // 1D tile of matrices: j is a row index → atomic row +=
+        wp::atomic_add(&t.data(tile_coord(i)).row_ref(j), value);
+        WP_TILE_SYNC();
+    } else {
+        t.add_inplace(tile_coord(i, j), value);
+    }
 }
-template <typename Tile> void tile_add_inplace(Tile& t, int i, int j, int k, typename Tile::Type value)
+// 3-index overload: row += for 2D matrix tiles; whole-element for others.
+template <typename Tile, typename Value> void tile_add_inplace(Tile& t, int i, int j, int k, Value value)
 {
-    t.add_inplace(tile_coord(i, j, k), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 2) {
+        // 2D tile of matrices: k is a row index → atomic row +=
+        wp::atomic_add(&t.data(tile_coord(i, j)).row_ref(k), value);
+        WP_TILE_SYNC();
+    } else {
+        t.add_inplace(tile_coord(i, j, k), value);
+    }
 }
-template <typename Tile> void tile_add_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value)
+// 4-index overload: row += for 3D matrix tiles; whole-element for others.
+template <typename Tile, typename Value> void tile_add_inplace(Tile& t, int i, int j, int k, int l, Value value)
 {
-    t.add_inplace(tile_coord(i, j, k, l), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 3) {
+        // 3D tile of matrices: l is a row index → atomic row +=
+        wp::atomic_add(&t.data(tile_coord(i, j, k)).row_ref(l), value);
+        WP_TILE_SYNC();
+    } else {
+        t.add_inplace(tile_coord(i, j, k, l), value);
+    }
+}
+// 5-index overload: row += for 4D matrix tiles.
+template <typename Tile, typename Value> void tile_add_inplace(Tile& t, int i, int j, int k, int l, int m, Value value)
+{
+    static_assert(
+        is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 4,
+        "tile_add_inplace with 5 indices requires a 4D tile of matrices"
+    );
+    // 4D tile of matrices: m is a row index → atomic row +=
+    wp::atomic_add(&t.data(tile_coord(i, j, k, l)).row_ref(m), value);
+    WP_TILE_SYNC();
 }
 
 template <typename Tile> void tile_sub_inplace(Tile& t, int i, typename Tile::Type value)
 {
     t.sub_inplace(tile_coord(i), value);
 }
-template <typename Tile> void tile_sub_inplace(Tile& t, int i, int j, typename Tile::Type value)
+// 2-index overload: whole-element sub for non-matrix tiles; row -= for 1D matrix tiles.
+template <typename Tile, typename Value> void tile_sub_inplace(Tile& t, int i, int j, Value value)
 {
-    t.sub_inplace(tile_coord(i, j), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 1) {
+        // 1D tile of matrices: j is a row index → atomic row -=
+        wp::atomic_add(&t.data(tile_coord(i)).row_ref(j), -value);
+        WP_TILE_SYNC();
+    } else {
+        t.sub_inplace(tile_coord(i, j), value);
+    }
 }
-template <typename Tile> void tile_sub_inplace(Tile& t, int i, int j, int k, typename Tile::Type value)
+// 3-index overload: row -= for 2D matrix tiles; whole-element for others.
+template <typename Tile, typename Value> void tile_sub_inplace(Tile& t, int i, int j, int k, Value value)
 {
-    t.sub_inplace(tile_coord(i, j, k), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 2) {
+        // 2D tile of matrices: k is a row index → atomic row -=
+        wp::atomic_add(&t.data(tile_coord(i, j)).row_ref(k), -value);
+        WP_TILE_SYNC();
+    } else {
+        t.sub_inplace(tile_coord(i, j, k), value);
+    }
 }
-template <typename Tile> void tile_sub_inplace(Tile& t, int i, int j, int k, int l, typename Tile::Type value)
+// 4-index overload: row -= for 3D matrix tiles; whole-element for others.
+template <typename Tile, typename Value> void tile_sub_inplace(Tile& t, int i, int j, int k, int l, Value value)
 {
-    t.sub_inplace(tile_coord(i, j, k, l), value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 3) {
+        // 3D tile of matrices: l is a row index → atomic row -=
+        wp::atomic_add(&t.data(tile_coord(i, j, k)).row_ref(l), -value);
+        WP_TILE_SYNC();
+    } else {
+        t.sub_inplace(tile_coord(i, j, k, l), value);
+    }
+}
+// 5-index overload: row -= for 4D matrix tiles.
+template <typename Tile, typename Value> void tile_sub_inplace(Tile& t, int i, int j, int k, int l, int m, Value value)
+{
+    static_assert(
+        is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 4,
+        "tile_sub_inplace with 5 indices requires a 4D tile of matrices"
+    );
+    // 4D tile of matrices: m is a row index → atomic row -=
+    wp::atomic_add(&t.data(tile_coord(i, j, k, l)).row_ref(m), -value);
+    WP_TILE_SYNC();
 }
 
 template <typename Tile> void tile_bit_and_inplace(Tile& t, int i, typename Tile::Type value)
@@ -5165,53 +5229,75 @@ void adj_tile_add_inplace(
 {
     adj_t.adj_add_inplace(tile_coord(i), adj_value);
 }
-template <typename Tile, typename AdjTile>
+// 2-index adj: accumulate gradient into adj_value; row case for 1D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
+void adj_tile_add_inplace(Tile& t, int i, int j, Value value, AdjTile& adj_t, int adj_i, int adj_j, Value& adj_value)
+{
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 1) {
+        // 1D tile of matrices: j is a row index → accumulate row gradient into adj_value
+        adj_value += adj_t.grad(tile_coord(i)).get_row(j);
+    } else {
+        adj_t.adj_add_inplace(tile_coord(i, j), adj_value);
+    }
+}
+// 3-index adj: row case for 2D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
 void adj_tile_add_inplace(
-    Tile& t,
-    int i,
-    int j,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    typename Tile::Type& adj_value
+    Tile& t, int i, int j, int k, Value value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, Value& adj_value
 )
 {
-    adj_t.adj_add_inplace(tile_coord(i, j), adj_value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 2) {
+        // 2D tile of matrices: k is a row index → accumulate row gradient into adj_value
+        adj_value += adj_t.grad(tile_coord(i, j)).get_row(k);
+    } else {
+        adj_t.adj_add_inplace(tile_coord(i, j, k), adj_value);
+    }
 }
-template <typename Tile, typename AdjTile>
-void adj_tile_add_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    typename Tile::Type& adj_value
-)
-{
-    adj_t.adj_add_inplace(tile_coord(i, j, k), adj_value);
-}
-template <typename Tile, typename AdjTile>
+// 4-index adj: row case for 3D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
 void adj_tile_add_inplace(
     Tile& t,
     int i,
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    Value value,
     AdjTile& adj_t,
     int adj_i,
     int adj_j,
     int adj_k,
     int adj_l,
-    typename Tile::Type& adj_value
+    Value& adj_value
 )
 {
-    adj_t.adj_add_inplace(tile_coord(i, j, k, l), adj_value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 3) {
+        // 3D tile of matrices: l is a row index → accumulate row gradient into adj_value
+        adj_value += adj_t.grad(tile_coord(i, j, k)).get_row(l);
+    } else {
+        adj_t.adj_add_inplace(tile_coord(i, j, k, l), adj_value);
+    }
+}
+// 5-index adj: row case for 4D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
+void adj_tile_add_inplace(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    int m,
+    Value value,
+    AdjTile& adj_t,
+    int adj_i,
+    int adj_j,
+    int adj_k,
+    int adj_l,
+    int adj_m,
+    Value& adj_value
+)
+{
+    // 4D tile of matrices: m is a row index → accumulate row gradient into adj_value
+    adj_value += adj_t.grad(tile_coord(i, j, k, l)).get_row(m);
 }
 
 template <typename Tile, typename AdjTile>
@@ -5221,53 +5307,75 @@ void adj_tile_sub_inplace(
 {
     adj_t.adj_sub_inplace(tile_coord(i), adj_value);
 }
-template <typename Tile, typename AdjTile>
+// 2-index adj: row case for 1D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
+void adj_tile_sub_inplace(Tile& t, int i, int j, Value value, AdjTile& adj_t, int adj_i, int adj_j, Value& adj_value)
+{
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 1) {
+        // 1D tile of matrices: j is a row index → negate gradient (sub adjoint)
+        adj_value -= adj_t.grad(tile_coord(i)).get_row(j);
+    } else {
+        adj_t.adj_sub_inplace(tile_coord(i, j), adj_value);
+    }
+}
+// 3-index adj: row case for 2D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
 void adj_tile_sub_inplace(
-    Tile& t,
-    int i,
-    int j,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    typename Tile::Type& adj_value
+    Tile& t, int i, int j, int k, Value value, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, Value& adj_value
 )
 {
-    adj_t.adj_sub_inplace(tile_coord(i, j), adj_value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 2) {
+        // 2D tile of matrices: k is a row index → negate gradient
+        adj_value -= adj_t.grad(tile_coord(i, j)).get_row(k);
+    } else {
+        adj_t.adj_sub_inplace(tile_coord(i, j, k), adj_value);
+    }
 }
-template <typename Tile, typename AdjTile>
-void adj_tile_sub_inplace(
-    Tile& t,
-    int i,
-    int j,
-    int k,
-    typename Tile::Type value,
-    AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    typename Tile::Type& adj_value
-)
-{
-    adj_t.adj_sub_inplace(tile_coord(i, j, k), adj_value);
-}
-template <typename Tile, typename AdjTile>
+// 4-index adj: row case for 3D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
 void adj_tile_sub_inplace(
     Tile& t,
     int i,
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    Value value,
     AdjTile& adj_t,
     int adj_i,
     int adj_j,
     int adj_k,
     int adj_l,
-    typename Tile::Type& adj_value
+    Value& adj_value
 )
 {
-    adj_t.adj_sub_inplace(tile_coord(i, j, k, l), adj_value);
+    if constexpr (is_matrix<typename Tile::Type>::value && Tile::Layout::Shape::N == 3) {
+        // 3D tile of matrices: l is a row index → negate gradient
+        adj_value -= adj_t.grad(tile_coord(i, j, k)).get_row(l);
+    } else {
+        adj_t.adj_sub_inplace(tile_coord(i, j, k, l), adj_value);
+    }
+}
+// 5-index adj: row case for 4D matrix tiles.
+template <typename Tile, typename AdjTile, typename Value>
+void adj_tile_sub_inplace(
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    int m,
+    Value value,
+    AdjTile& adj_t,
+    int adj_i,
+    int adj_j,
+    int adj_k,
+    int adj_l,
+    int adj_m,
+    Value& adj_value
+)
+{
+    // 4D tile of matrices: m is a row index → negate gradient
+    adj_value -= adj_t.grad(tile_coord(i, j, k, l)).get_row(m);
 }
 
 template <typename Tile, typename AdjTile>

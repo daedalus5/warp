@@ -4976,9 +4976,30 @@ add_builtin(
 
 
 def tile_inplace_value_func(arg_types, arg_values):
-    if not types_equal(arg_types["a"].dtype, arg_types["value"]):
+    tile_dtype = arg_types["a"].dtype
+    value_type = arg_types["value"]
+
+    # Row augassign: tile[i,...][r] += vec, where tile dtype is a matrix and the
+    # value is a vector matching the matrix row length.  num_indices == tile rank + 1.
+    if type_is_matrix(tile_dtype) and type_is_vector(value_type):
+        tile_shape = arg_types["a"].shape
+        num_indices = len(arg_types) - 2  # subtract "a" and "value"
+        if num_indices == len(tile_shape) + 1:
+            if value_type._length_ != tile_dtype._shape_[1]:
+                raise TypeError(
+                    f"tile row augassign: source vector length {value_type._length_} does not match "
+                    f"matrix column count {tile_dtype._shape_[1]}"
+                )
+            if not types_equal(value_type._wp_scalar_type_, tile_dtype._wp_scalar_type_):
+                raise TypeError(
+                    f"tile row augassign: scalar type mismatch between vector {value_type} and matrix {tile_dtype}"
+                )
+            arg_types["a"].storage = "shared"
+            return None
+
+    if not types_equal(tile_dtype, value_type):
         raise TypeError(
-            f"'value' must have the same dtype as target tile for inplace ops, got {arg_types['a'].dtype} and {arg_types['value']}"
+            f"'value' must have the same dtype as target tile for inplace ops, got {tile_dtype} and {value_type}"
         )
 
     # force the input tile to shared memory
@@ -5020,6 +5041,23 @@ add_builtin(
     hidden=True,
     export=False,
 )
+# Row augassign for 4D matrix tiles: t[i,j,k,l][r] += vec uses 5 indices (i,j,k,l,r)
+add_builtin(
+    "tile_add_inplace",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "m": int,
+        "value": Any,
+    },
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
 
 add_builtin(
     "tile_sub_inplace",
@@ -5048,6 +5086,23 @@ add_builtin(
 add_builtin(
     "tile_sub_inplace",
     input_types={"a": tile(dtype=Any, shape=tuple[int, ...]), "i": int, "j": int, "k": int, "l": int, "value": Any},
+    value_func=tile_inplace_value_func,
+    group="Tile Primitives",
+    hidden=True,
+    export=False,
+)
+# Row augassign for 4D matrix tiles: t[i,j,k,l][r] -= vec uses 5 indices (i,j,k,l,r)
+add_builtin(
+    "tile_sub_inplace",
+    input_types={
+        "a": tile(dtype=Any, shape=tuple[int, ...]),
+        "i": int,
+        "j": int,
+        "k": int,
+        "l": int,
+        "m": int,
+        "value": Any,
+    },
     value_func=tile_inplace_value_func,
     group="Tile Primitives",
     hidden=True,
