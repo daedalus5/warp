@@ -4191,6 +4191,25 @@ def tile_assign_value_func(arg_types, arg_values):
                 f"got {len(dst_type.shape)} and {len(src_type.shape)}"
             )
 
+    # For matrix-dtype tiles, also accept one extra index for row-assign:
+    # assign(dst, i0, ..., iR, row_idx, src_vec) where src is a vector
+    # matching the matrix row length.
+    if src_type is not None and not is_tile(src_type) and type_is_matrix(dst_type.dtype):
+        # num_indices = total args - dst - src
+        num_indices = len(arg_types) - 2
+        tile_shape = dst_type.shape
+        if num_indices == len(tile_shape) + 1:
+            # row-assign case: src must be a vector with the right length
+            if not type_is_vector(src_type):
+                raise TypeError(
+                    f"tile row-assign: expected a vector source for matrix-dtype tile row write, got {src_type}"
+                )
+            if src_type._length_ != dst_type.dtype._shape_[1]:
+                raise TypeError(
+                    f"tile row-assign: source vector length {src_type._length_} does not match "
+                    f"matrix column count {dst_type.dtype._shape_[1]}"
+                )
+
     # force the destination tile to shared memory
     dst_type.storage = "shared"
     return None

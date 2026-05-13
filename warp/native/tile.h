@@ -5717,6 +5717,14 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, const Scalar& src)
 {
     if constexpr (is_vector<typename TileA::Type>::value) {
         dest.data(tile_coord(i))[j] = src;
+    } else if constexpr (is_matrix<typename TileA::Type>::value) {
+        if constexpr (TileA::Layout::Shape::N == 1) {
+            // 1D tile of matrices: j is a row index → row write
+            dest.data(tile_coord(i)).set_row(j, src);
+        } else {
+            // 2D tile of matrices: (i,j) are tile coords → whole-matrix write
+            dest.data(tile_coord(i, j)) = src;
+        }
     } else {
         dest.data(tile_coord(i, j)) = src;
     }
@@ -5728,7 +5736,16 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, const Scalar&
     if constexpr (is_vector<typename TileA::Type>::value) {
         dest.data(tile_coord(i, j))[k] = src;
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        dest.data(tile_coord(i)).data[j][k] = src;
+        if constexpr (TileA::Layout::Shape::N == 1) {
+            // 1D tile of matrices + 2 extra indices: (j,k) = (row,col) scalar write
+            dest.data(tile_coord(i)).data[j][k] = src;
+        } else if constexpr (TileA::Layout::Shape::N == 2) {
+            // 2D tile of matrices: k is a row index → row write
+            dest.data(tile_coord(i, j)).set_row(k, src);
+        } else {
+            // 3D tile of matrices: (i,j,k) are tile coords → whole-matrix write
+            dest.data(tile_coord(i, j, k)) = src;
+        }
     } else {
         dest.data(tile_coord(i, j, k)) = src;
     }
@@ -5740,7 +5757,16 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, const 
     if constexpr (is_vector<typename TileA::Type>::value) {
         dest.data(tile_coord(i, j, k))[l] = src;
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        dest.data(tile_coord(i, j)).data[k][l] = src;
+        if constexpr (TileA::Layout::Shape::N == 2) {
+            // 2D tile of matrices: (k,l) = (row,col) scalar write
+            dest.data(tile_coord(i, j)).data[k][l] = src;
+        } else if constexpr (TileA::Layout::Shape::N == 3) {
+            // 3D tile of matrices: l is a row index → row write
+            dest.data(tile_coord(i, j, k)).set_row(l, src);
+        } else {
+            // 4D tile of matrices: (i,j,k,l) are tile coords → whole-matrix write
+            dest.data(tile_coord(i, j, k, l)) = src;
+        }
     } else {
         dest.data(tile_coord(i, j, k, l)) = src;
     }
@@ -5752,7 +5778,18 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, int m,
     if constexpr (is_vector<typename TileA::Type>::value) {
         dest.data(tile_coord(i, j, k, l))[m] = src;
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        dest.data(tile_coord(i, j, k)).data[l][m] = src;
+        if constexpr (TileA::Layout::Shape::N == 3) {
+            // 3D tile of matrices: (l,m) = (row,col) scalar write
+            dest.data(tile_coord(i, j, k)).data[l][m] = src;
+        } else if constexpr (TileA::Layout::Shape::N == 4) {
+            // 4D tile of matrices: m is a row index → row write
+            dest.data(tile_coord(i, j, k, l)).set_row(m, src);
+        } else {
+            static_assert(
+                always_false<TileA>::value,
+                "assign with 5 indices requires a tile of vectors (4D tile) or matrices (3D or 4D tile)"
+            );
+        }
     } else {
         static_assert(
             always_false<TileA>::value,
@@ -5765,7 +5802,12 @@ template <typename TileA, typename Scalar>
 inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, int m, int n, const Scalar& src)
 {
     if constexpr (is_matrix<typename TileA::Type>::value) {
-        dest.data(tile_coord(i, j, k, l)).data[m][n] = src;
+        if constexpr (TileA::Layout::Shape::N == 4) {
+            // 4D tile of matrices: (m,n) = (row,col) scalar write
+            dest.data(tile_coord(i, j, k, l)).data[m][n] = src;
+        } else {
+            static_assert(always_false<TileA>::value, "assign with 6 indices requires a tile of matrices (4D tile)");
+        }
     } else {
         static_assert(always_false<TileA>::value, "assign with 6 indices requires a tile of matrices (4D tile)");
     }
@@ -5793,6 +5835,14 @@ adj_assign(TileA& dest, int i, int j, const Scalar& src, AdjTileA& adj_dest, int
 
     if constexpr (is_vector<typename TileA::Type>::value) {
         adj_src += dest.grad(tile_coord(i))[j];
+    } else if constexpr (is_matrix<typename TileA::Type>::value) {
+        if constexpr (TileA::Layout::Shape::N == 1) {
+            // 1D tile of matrices: j is a row index → adjoint of row write = get_row
+            adj_src += dest.grad(tile_coord(i)).get_row(j);
+        } else {
+            // 2D tile of matrices: (i,j) are tile coords → adjoint of whole-matrix write
+            adj_src += dest.grad(tile_coord(i, j));
+        }
     } else {
         adj_src += dest.grad(tile_coord(i, j));
     }
@@ -5818,7 +5868,16 @@ inline CUDA_CALLABLE void adj_assign(
     if constexpr (is_vector<typename TileA::Type>::value) {
         adj_src += dest.grad(tile_coord(i, j))[k];
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        adj_src += dest.grad(tile_coord(i)).data[j][k];
+        if constexpr (TileA::Layout::Shape::N == 1) {
+            // 1D tile of matrices + 2 extra indices: (j,k) = (row,col) scalar write
+            adj_src += dest.grad(tile_coord(i)).data[j][k];
+        } else if constexpr (TileA::Layout::Shape::N == 2) {
+            // 2D tile of matrices: k is a row index → adjoint of row write = get_row
+            adj_src += dest.grad(tile_coord(i, j)).get_row(k);
+        } else {
+            // 3D tile of matrices: (i,j,k) are tile coords → adjoint of whole-matrix write
+            adj_src += dest.grad(tile_coord(i, j, k));
+        }
     } else {
         adj_src += dest.grad(tile_coord(i, j, k));
     }
@@ -5846,7 +5905,16 @@ inline CUDA_CALLABLE void adj_assign(
     if constexpr (is_vector<typename TileA::Type>::value) {
         adj_src += dest.grad(tile_coord(i, j, k))[l];
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        adj_src += dest.grad(tile_coord(i, j)).data[k][l];
+        if constexpr (TileA::Layout::Shape::N == 2) {
+            // 2D tile of matrices: (k,l) = (row,col) scalar write
+            adj_src += dest.grad(tile_coord(i, j)).data[k][l];
+        } else if constexpr (TileA::Layout::Shape::N == 3) {
+            // 3D tile of matrices: l is a row index → adjoint of row write = get_row
+            adj_src += dest.grad(tile_coord(i, j, k)).get_row(l);
+        } else {
+            // 4D tile of matrices: (i,j,k,l) are tile coords → adjoint of whole-matrix write
+            adj_src += dest.grad(tile_coord(i, j, k, l));
+        }
     } else {
         adj_src += dest.grad(tile_coord(i, j, k, l));
     }
@@ -5876,7 +5944,18 @@ inline CUDA_CALLABLE void adj_assign(
     if constexpr (is_vector<typename TileA::Type>::value) {
         adj_src += dest.grad(tile_coord(i, j, k, l))[m];
     } else if constexpr (is_matrix<typename TileA::Type>::value) {
-        adj_src += dest.grad(tile_coord(i, j, k)).data[l][m];
+        if constexpr (TileA::Layout::Shape::N == 3) {
+            // 3D tile of matrices: (l,m) = (row,col) scalar write
+            adj_src += dest.grad(tile_coord(i, j, k)).data[l][m];
+        } else if constexpr (TileA::Layout::Shape::N == 4) {
+            // 4D tile of matrices: m is a row index → adjoint of row write = get_row
+            adj_src += dest.grad(tile_coord(i, j, k, l)).get_row(m);
+        } else {
+            static_assert(
+                always_false<TileA>::value,
+                "adj_assign with 5 indices requires a tile of vectors (4D tile) or matrices (3D or 4D tile)"
+            );
+        }
     } else {
         static_assert(
             always_false<TileA>::value,
@@ -5909,7 +5988,14 @@ inline CUDA_CALLABLE void adj_assign(
     }
 
     if constexpr (is_matrix<typename TileA::Type>::value) {
-        adj_src += dest.grad(tile_coord(i, j, k, l)).data[m][n];
+        if constexpr (TileA::Layout::Shape::N == 4) {
+            // 4D tile of matrices: (m,n) = (row,col) scalar write
+            adj_src += dest.grad(tile_coord(i, j, k, l)).data[m][n];
+        } else {
+            static_assert(
+                always_false<TileA>::value, "adj_assign with 6 indices requires a tile of matrices (4D tile)"
+            );
+        }
     } else {
         static_assert(always_false<TileA>::value, "adj_assign with 6 indices requires a tile of matrices (4D tile)");
     }
