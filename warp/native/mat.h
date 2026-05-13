@@ -169,6 +169,10 @@ template <unsigned Rows, unsigned Cols, typename Type> struct mat_t {
         reinterpret_cast<vec_t<Cols, Type>&>(data[index]) = v;
     }
 
+    // Returns a mutable reference to row ``index`` as a ``vec_t``.
+    // Used by adj_array_store_slot lambdas for array-of-mat row writes.
+    CUDA_CALLABLE vec_t<Cols, Type>& row_ref(int index) { return reinterpret_cast<vec_t<Cols, Type>&>(data[index]); }
+
     CUDA_CALLABLE vec_t<Rows, Type> get_col(int index) const
     {
         vec_t<Rows, Type> ret;
@@ -752,6 +756,27 @@ inline CUDA_CALLABLE void adj_index(
     int adj_row,
     int adj_col,
     Type adj_value
+)
+{
+    // nop
+}
+
+template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE vec_t<Cols, Type>* indexref(mat_t<Rows, Cols, Type>* m, int row)
+{
+#ifndef NDEBUG
+    if (row < 0 || row >= (int)Rows) {
+        printf("mat row index %d out of bounds at %s %d\n", row, __FILE__, __LINE__);
+        assert(0);
+    }
+#endif
+
+    return reinterpret_cast<vec_t<Cols, Type>*>(&(m->data[row]));
+}
+
+template <unsigned Rows, unsigned Cols, typename Type>
+inline CUDA_CALLABLE void adj_indexref(
+    mat_t<Rows, Cols, Type>* m, int row, mat_t<Rows, Cols, Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value
 )
 {
     // nop

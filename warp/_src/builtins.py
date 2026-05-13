@@ -10690,6 +10690,32 @@ add_builtin(
     skip_replay=True,
     is_differentiable=False,
 )
+
+
+def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+    mat_type = arg_types["a"]
+    row_type = mat_type._wp_row_type_
+
+    return Reference(row_type)
+
+
+def matrix_index_row_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (Reference(args["a"]), args["i"])
+    template_args = ()
+    return (func_args, template_args)
+
+
+# implements &(*matrix)[i] = row
+add_builtin(
+    "indexref",
+    input_types={"a": matrix(shape=(Any, Any), dtype=Scalar), "i": Int},
+    value_func=matrix_index_row_value_func,
+    dispatch_func=matrix_index_row_dispatch_func,
+    hidden=True,
+    group="Utility",
+    skip_replay=True,
+    is_differentiable=False,
+)
 # implements &(*matrix)[i, j]
 add_builtin(
     "indexref",
@@ -10985,13 +11011,6 @@ add_builtin(
     group="Utility",
     is_differentiable=False,
 )
-
-
-def matrix_index_row_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
-    mat_type = arg_types["a"]
-    row_type = mat_type._wp_row_type_
-
-    return Reference(row_type)
 
 
 # implements &matrix[i] = row

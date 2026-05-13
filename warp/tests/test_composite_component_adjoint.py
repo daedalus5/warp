@@ -101,6 +101,24 @@ def _k_mat33_element(y: wp.array(dtype=wp.mat33), x: wp.array(dtype=wp.float32))
 
 
 @wp.kernel
+def _k_mat33_row(y: wp.array(dtype=wp.mat33), x: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    y[i][1] = x[i]
+
+
+@wp.kernel
+def _k_mat22_row(y: wp.array(dtype=wp.mat22), x: wp.array(dtype=wp.vec2)):
+    i = wp.tid()
+    y[i][0] = x[i]
+
+
+@wp.kernel
+def _k_mat33_row_iadd(y: wp.array(dtype=wp.mat33), x: wp.array(dtype=wp.vec3)):
+    i = wp.tid()
+    y[i][1] += x[i]
+
+
+@wp.kernel
 def _k_transform_p(y: wp.array(dtype=wp.transformf), p: wp.array(dtype=wp.vec3)):
     i = wp.tid()
     y[i].p = p[i]
@@ -448,6 +466,55 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         tape.backward()
 
         assert_np_equal(x.grad.numpy(), np.ones((a, b, c), dtype=np.float32))
+
+    def test_array_mat33_row_write_forward(self):
+        n = 3
+        src = wp.array(np.tile([1.0, 2.0, 3.0], (n, 1)), dtype=wp.vec3)
+        dst = wp.zeros(n, dtype=wp.mat33)
+        wp.launch(_k_mat33_row, n, inputs=[dst, src])
+        wp.synchronize_device()
+        expected = np.zeros((n, 3, 3), dtype=np.float32)
+        expected[:, 1, :] = [1.0, 2.0, 3.0]
+        assert_np_equal(dst.numpy(), expected)
+
+    def test_array_mat33_row_write_backward(self):
+        n = 2
+        src = wp.array(np.tile([1.0, 2.0, 3.0], (n, 1)), dtype=wp.vec3, requires_grad=True)
+        dst = wp.zeros(n, dtype=wp.mat33, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_mat33_row, n, inputs=[dst, src])
+
+        grad_seed = np.zeros((n, 3, 3), dtype=np.float32)
+        grad_seed[:, 1, :] = [10.0, 20.0, 30.0]
+        dst.grad = wp.array(grad_seed, dtype=wp.mat33)
+        tape.backward()
+
+        expected = np.tile([10.0, 20.0, 30.0], (n, 1))
+        assert_np_equal(src.grad.numpy(), expected)
+
+    def test_array_mat22_row_write_forward(self):
+        n = 2
+        src = wp.array(np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float32), dtype=wp.vec2)
+        dst = wp.zeros(n, dtype=wp.mat22)
+        wp.launch(_k_mat22_row, n, inputs=[dst, src])
+        wp.synchronize_device()
+        expected = np.zeros((n, 2, 2), dtype=np.float32)
+        expected[:, 0, :] = src.numpy()
+        assert_np_equal(dst.numpy(), expected)
+
+    def test_array_mat33_row_iadd_forward(self):
+        n = 2
+        src = wp.array(np.tile([1.0, 2.0, 3.0], (n, 1)), dtype=wp.vec3)
+        init = np.zeros((n, 3, 3), dtype=np.float32)
+        init[:, 1, :] = [5.0, 5.0, 5.0]
+        dst = wp.array(init, dtype=wp.mat33)
+        wp.launch(_k_mat33_row_iadd, n, inputs=[dst, src])
+        wp.synchronize_device()
+        expected = init.copy()
+        expected[:, 1, :] += [1.0, 2.0, 3.0]
+        assert_np_equal(dst.numpy(), expected)
 
 
 if __name__ == "__main__":

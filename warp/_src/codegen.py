@@ -3344,7 +3344,10 @@ class Adjoint:
           - Arrays other than plain ``wp.array`` (indexed, fabric, fixed):
             those don't have an ``adj_array_store_slot`` overload and
             would fail to compile.
-          - Vec/quat/mat slices (writing a sub-vec, a row, or a sub-mat):
+          - ``arr[i][r]`` — mat row write: handled via ``mat_t::row_ref(r)``
+            which returns ``vec_t<Cols, Type>&``; the lambda can then
+            accumulate directly. See ``row_ref`` in ``mat.h``.
+          - Vec/quat mat non-row slices (writing a sub-vec or a sub-mat):
             the slot is a composite that isn't trivially addressable as
             a single reference via the lambda pattern, so these stay on
             the existing ``assign_copy`` / ``assign_inplace`` path.
@@ -3537,17 +3540,24 @@ class Adjoint:
                     return None
             else:  # ast.Subscript
                 if type_is_matrix(current_type):
-                    if not isinstance(step.slice, ast.Tuple):
-                        return None
-                    slice_elts = step.slice.elts
-                    if len(slice_elts) != 2:
-                        return None
-                    access_parts.append(("str", ".data["))
-                    access_parts.append(("idx", slice_elts[0]))
-                    access_parts.append(("str", "]["))
-                    access_parts.append(("idx", slice_elts[1]))
-                    access_parts.append(("str", "]"))
-                    current_type = getattr(current_type, "_wp_scalar_type_", None)
+                    if isinstance(step.slice, ast.Tuple):
+                        slice_elts = step.slice.elts
+                        if len(slice_elts) != 2:
+                            return None
+                        access_parts.append(("str", ".data["))
+                        access_parts.append(("idx", slice_elts[0]))
+                        access_parts.append(("str", "]["))
+                        access_parts.append(("idx", slice_elts[1]))
+                        access_parts.append(("str", "]"))
+                        current_type = getattr(current_type, "_wp_scalar_type_", None)
+                    else:
+                        # Single-index subscript: mat[r] → row write via row_ref().
+                        # row_ref() returns vec_t<Cols, Type>& which adj_array_store_slot
+                        # can accumulate into directly.
+                        access_parts.append(("str", ".row_ref("))
+                        access_parts.append(("idx", step.slice))
+                        access_parts.append(("str", ")"))
+                        current_type = getattr(current_type, "_wp_row_type_", None)
                 elif (
                     type_is_vector(current_type)
                     or type_is_quaternion(current_type)
@@ -3905,6 +3915,14 @@ class Adjoint:
                 or type_is_matrix(target_type)
                 or type_is_transformation(target_type)
             ):
+                # When the target is a reference (i.e. an array element accessed via
+                # arr[i]), the ``*_inplace`` builtins operate on a loaded copy and
+                # silently discard the result.  Fall back to the load→op→store path
+                # so that _store_subscript (and its _try_lower_array_slot_write fast
+                # path) can write the result back to the actual array element.
+                if is_reference(target.type):
+                    augassign_subscript(target, indices)
+                    return
                 if isinstance(node.op, ast.Add):
                     adj.add_builtin_call("add_inplace", [target, *indices, rhs])
                 elif isinstance(node.op, ast.Sub):
