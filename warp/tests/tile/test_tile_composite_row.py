@@ -86,6 +86,90 @@ def test_tile_mat33_row_read_2d(test, device):
     assert_np_equal(out.numpy(), expected)
 
 
+# ── 3D tile of mat33: extract row by index ───────────────────────────────────
+# A (2,2,2) tile-of-mat33. Each of the 8 threads decodes its flat index into
+# (i,j,k), loads row 1 = [4,5,6] from its tile slot, and writes to out[i,j,k].
+D0_3D = 2
+D1_3D = 2
+D2_3D = 2
+BLOCK_DIM_3D = D0_3D * D1_3D * D2_3D
+
+
+@wp.kernel
+def _k_tile_mat33_row_read_3d(
+    inp: wp.array3d(dtype=wp.mat33),
+    out: wp.array3d(dtype=wp.vec3),
+):
+    _tile, idx = wp.tid()
+    i = idx // (D1_3D * D2_3D)
+    j = (idx // D2_3D) % D1_3D
+    k = idx % D2_3D
+    t = wp.tile_load(inp, shape=(D0_3D, D1_3D, D2_3D))
+    out[i, j, k] = t[i, j, k][1]  # row 1 = [4, 5, 6]
+
+
+def test_tile_mat33_row_read_3d(test, device):
+    data = np.tile(
+        np.arange(1.0, 10.0, dtype=np.float32).reshape(3, 3),
+        (D0_3D, D1_3D, D2_3D, 1, 1),
+    )
+    inp = wp.array(data, dtype=wp.mat33, device=device)
+    out = wp.zeros((D0_3D, D1_3D, D2_3D), dtype=wp.vec3, device=device)
+    wp.launch_tiled(
+        _k_tile_mat33_row_read_3d,
+        dim=[1],
+        inputs=[inp, out],
+        block_dim=BLOCK_DIM_3D,
+        device=device,
+    )
+    wp.synchronize_device()
+    expected = np.tile([4.0, 5.0, 6.0], (D0_3D, D1_3D, D2_3D, 1))
+    assert_np_equal(out.numpy(), expected)
+
+
+# ── 4D tile of mat22: extract row by index ───────────────────────────────────
+# A (2,2,2,2) tile-of-mat22. Each of the 16 threads decodes its flat index into
+# (i,j,k,l), loads row 0 = [1,2] from its tile slot, and writes to out[i,j,k,l].
+D0_4D = 2
+D1_4D = 2
+D2_4D = 2
+D3_4D = 2
+BLOCK_DIM_4D = D0_4D * D1_4D * D2_4D * D3_4D
+
+
+@wp.kernel
+def _k_tile_mat22_row_read_4d(
+    inp: wp.array4d(dtype=wp.mat22),
+    out: wp.array4d(dtype=wp.vec2),
+):
+    _tile, idx = wp.tid()
+    i = idx // (D1_4D * D2_4D * D3_4D)
+    j = (idx // (D2_4D * D3_4D)) % D1_4D
+    k = (idx // D3_4D) % D2_4D
+    l = idx % D3_4D
+    t = wp.tile_load(inp, shape=(D0_4D, D1_4D, D2_4D, D3_4D))
+    out[i, j, k, l] = t[i, j, k, l][0]  # row 0 = [1, 2]
+
+
+def test_tile_mat22_row_read_4d(test, device):
+    data = np.tile(
+        np.arange(1.0, 5.0, dtype=np.float32).reshape(2, 2),
+        (D0_4D, D1_4D, D2_4D, D3_4D, 1, 1),
+    )
+    inp = wp.array(data, dtype=wp.mat22, device=device)
+    out = wp.zeros((D0_4D, D1_4D, D2_4D, D3_4D), dtype=wp.vec2, device=device)
+    wp.launch_tiled(
+        _k_tile_mat22_row_read_4d,
+        dim=[1],
+        inputs=[inp, out],
+        block_dim=BLOCK_DIM_4D,
+        device=device,
+    )
+    wp.synchronize_device()
+    expected = np.tile([1.0, 2.0], (D0_4D, D1_4D, D2_4D, D3_4D, 1))
+    assert_np_equal(out.numpy(), expected)
+
+
 # ── Adjoint test: backward through 1D tile-of-mat row read ──────────────────
 # Forward: load a BLOCK_DIM-element tile of mat22; each thread extracts row 0
 #          from its slot, writing [m[0,0], m[0,1]] to out[i].
@@ -134,6 +218,8 @@ add_function_test(TestTileCompositeRow, "test_tile_mat33_row_read_2d", test_tile
 add_function_test(
     TestTileCompositeRow, "test_tile_mat22_row_read_backward", test_tile_mat22_row_read_backward, devices=devices
 )
+add_function_test(TestTileCompositeRow, "test_tile_mat33_row_read_3d", test_tile_mat33_row_read_3d, devices=devices)
+add_function_test(TestTileCompositeRow, "test_tile_mat22_row_read_4d", test_tile_mat22_row_read_4d, devices=devices)
 
 
 if __name__ == "__main__":
