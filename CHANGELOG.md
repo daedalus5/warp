@@ -32,6 +32,10 @@
 - Add `--use-dynamic-cuda` build option to link against shared CUDA libraries instead of embedding
   them statically; the corresponding shared libraries must be present at runtime
   ([GH-1334](https://github.com/NVIDIA/warp/issues/1334)).
+- Support row indexing on matrix-dtype tiles via chained subscript syntax (`tile[i, j, k][r]`)
+  for read, write, and augmented assignment, with adjoint support.
+- Support row reads and writes on arrays of matrix dtype (`arr[i][r]`) via a new
+  `indexref(matrix, int)` overload.
 
 ### Removed
 

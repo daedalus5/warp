@@ -549,5 +549,40 @@ add_function_test(
 )
 
 
+# ── Negative test: column slicing on a matrix-dtype tile ─────────────────────
+# Column indexing (e.g. ``t[i][:, 1]``) is out of scope for the tile
+# row-extraction feature.  The codegen should raise an exception rather than
+# silently producing wrong results.
+
+
+def test_tile_mat33_column_slice_unsupported(test, device):
+    """Column slicing on a matrix-dtype tile is out of scope; should raise."""
+
+    def build_and_launch():
+        @wp.kernel
+        def _k_bad(out: wp.array(dtype=wp.vec3)):
+            i = wp.tid()
+            t = wp.tile_zeros(dtype=wp.mat33, shape=(4,))
+            out[i % 4] = t[i % 4][:, 1]  # column slice — not supported
+
+        wp.launch_tiled(
+            _k_bad,
+            dim=[1],
+            inputs=[wp.zeros(4, dtype=wp.vec3, device=device)],
+            block_dim=4,
+            device=device,
+        )
+
+    test.assertRaises((RuntimeError, TypeError), build_and_launch)
+
+
+add_function_test(
+    TestTileCompositeRow,
+    "test_tile_mat33_column_slice_unsupported",
+    test_tile_mat33_column_slice_unsupported,
+    devices=devices,
+)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

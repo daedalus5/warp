@@ -119,6 +119,18 @@ def _k_mat33_row_iadd(y: wp.array(dtype=wp.mat33), x: wp.array(dtype=wp.vec3)):
 
 
 @wp.kernel
+def _k_mat33_row_read(y: wp.array(dtype=wp.vec3), x: wp.array(dtype=wp.mat33)):
+    i = wp.tid()
+    y[i] = x[i][1]
+
+
+@wp.kernel
+def _k_mat22_row_read(y: wp.array(dtype=wp.vec2), x: wp.array(dtype=wp.mat22)):
+    i = wp.tid()
+    y[i] = x[i][0]
+
+
+@wp.kernel
 def _k_transform_p(y: wp.array(dtype=wp.transformf), p: wp.array(dtype=wp.vec3)):
     i = wp.tid()
     y[i].p = p[i]
@@ -514,6 +526,43 @@ class TestCompositeComponentAdjoint(unittest.TestCase):
         wp.synchronize_device()
         expected = init.copy()
         expected[:, 1, :] += [1.0, 2.0, 3.0]
+        assert_np_equal(dst.numpy(), expected)
+
+    def test_array_mat33_row_read_forward(self):
+        n = 3
+        init = np.arange(n * 9, dtype=np.float32).reshape(n, 3, 3)
+        src = wp.array(init, dtype=wp.mat33)
+        dst = wp.zeros(n, dtype=wp.vec3)
+        wp.launch(_k_mat33_row_read, n, inputs=[dst, src])
+        wp.synchronize_device()
+        expected = init[:, 1, :]  # row 1 from each input matrix
+        assert_np_equal(dst.numpy(), expected)
+
+    def test_array_mat33_row_read_backward(self):
+        n = 2
+        init = np.arange(n * 9, dtype=np.float32).reshape(n, 3, 3)
+        src = wp.array(init, dtype=wp.mat33, requires_grad=True)
+        dst = wp.zeros(n, dtype=wp.vec3, requires_grad=True)
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(_k_mat33_row_read, n, inputs=[dst, src])
+
+        dst.grad = wp.array(np.tile([1.0, 2.0, 3.0], (n, 1)), dtype=wp.vec3)
+        tape.backward()
+
+        expected_grad = np.zeros_like(init)
+        expected_grad[:, 1, :] = [1.0, 2.0, 3.0]  # only row 1 of the input receives gradient
+        assert_np_equal(src.grad.numpy(), expected_grad)
+
+    def test_array_mat22_row_read_forward(self):
+        n = 2
+        init = np.array([[[1.0, 2.0], [3.0, 4.0]], [[5.0, 6.0], [7.0, 8.0]]], dtype=np.float32)
+        src = wp.array(init, dtype=wp.mat22)
+        dst = wp.zeros(n, dtype=wp.vec2)
+        wp.launch(_k_mat22_row_read, n, inputs=[dst, src])
+        wp.synchronize_device()
+        expected = init[:, 0, :]
         assert_np_equal(dst.numpy(), expected)
 
 
