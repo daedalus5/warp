@@ -11,10 +11,6 @@ import unittest
 import numpy as np
 
 import warp as wp
-
-# Note: Column slicing on matrix-dtype tiles (`tile[i,j,k][:, c]`) is out of
-# scope for this feature and currently compiles to a silently incorrect kernel.
-# See follow-up: codegen should reject this pattern with a clear error.
 from warp.tests.unittest_utils import (
     add_function_test,
     assert_np_equal,

@@ -3821,7 +3821,8 @@ class Adjoint:
                     current = adj.add_builtin_call("extract", [target, *indices])
 
             result = apply_op(current)
-            adj._store_subscript(lhs, target, indices, result)
+            if not adj._try_lower_array_slot_write(lhs, result):
+                adj._store_subscript(lhs, target, indices, result)
 
         def augassign_attribute():
             """Load current value of attribute target, apply op, store back."""
