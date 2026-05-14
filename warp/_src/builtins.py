@@ -4209,6 +4209,11 @@ def tile_assign_value_func(arg_types, arg_values):
                     f"tile row-assign: source vector length {src_type._length_} does not match "
                     f"matrix column count {dst_type.dtype._shape_[1]}"
                 )
+            if not types_equal(src_type._wp_scalar_type_, dst_type.dtype._wp_scalar_type_):
+                raise TypeError(
+                    f"tile assign expects vec of dtype {type_repr(dst_type.dtype._wp_scalar_type_)} "
+                    f"for matrix row write, got {type_repr(src_type._wp_scalar_type_)}"
+                )
 
     # force the destination tile to shared memory
     dst_type.storage = "shared"
