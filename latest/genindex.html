@@ -8,7 +8,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Index &#8212; Warp 1.14.0.dev0</title>
+    <title>Index &#8212; Warp 1.15.0.dev0</title>
   
   
   
@@ -43,7 +43,7 @@
 
 
 
-    <script src="_static/documentation_options.js?v=b37a29d0"></script>
+    <script src="_static/documentation_options.js?v=cfb6835f"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -65,7 +65,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.14.0.dev0" />
+  <meta name="docsearch:version" content="1.15.0.dev0" />
 
 
   </head>
@@ -136,11 +136,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0.dev0</p>
+    <p class="title logo__title">Warp 1.15.0.dev0</p>
   
 </a></div>
     
@@ -271,11 +271,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.14.0.dev0 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.14.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.14.0.dev0</p>
+    <p class="title logo__title">Warp 1.15.0.dev0</p>
   
 </a>
 
@@ -380,6 +380,7 @@
 </ul>
 </details></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/debugging.html">Debugging</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/contribution_guide.html">Contribution Guide</a></li>
@@ -392,6 +393,7 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/codegen.html">Code Generation</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/allocators.html">Allocators</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_dive/memory_access.html">CPU/GPU cross-device memory access</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/concurrency.html">Concurrency</a></li>
 <li class="toctree-l1"><a class="reference internal" href="deep_dive/profiling.html">Profiling</a></li>
 </ul>
@@ -407,7 +409,6 @@
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_autograd.html">warp.autograd</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_config.html">warp.config</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_fem.html">warp.fem</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api_reference/warp_jax.html">warp.jax</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_optim.html">warp.optim</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_render.html">warp.render</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api_reference/warp_sparse.html">warp.sparse</a></li>
@@ -502,6 +503,8 @@
         <li><a href="api_reference/_generated/warp.BvhQueryTiled.html#warp.BvhQueryTiled.__init__">(warp.BvhQueryTiled method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.__init__">(warp.CaptureMode method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.__init__">(warp.config.LaunchArrayAccessMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Device.html#warp.Device.__init__">(warp.Device method)</a>
 </li>
@@ -699,10 +702,6 @@
 </li>
         <li><a href="api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery.__init__">(warp.HashGridQuery method)</a>
 </li>
-        <li><a href="api_reference/_generated/warp.HashGridQueryD.html#warp.HashGridQueryD.__init__">(warp.HashGridQueryD method)</a>
-</li>
-        <li><a href="api_reference/_generated/warp.HashGridQueryH.html#warp.HashGridQueryH.__init__">(warp.HashGridQueryH method)</a>
-</li>
         <li><a href="api_reference/_generated/warp.indexedarray.html#warp.indexedarray.__init__">(warp.indexedarray method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.indexedfabricarray.html#warp.indexedfabricarray.__init__">(warp.indexedfabricarray method)</a>
@@ -715,11 +714,15 @@
 </li>
         <li><a href="api_reference/_generated/warp.int8.html#warp.int8.__init__">(warp.int8 method)</a>
 </li>
-        <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.__init__">(warp.jax.ffi.GraphMode method)</a>
+        <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.__init__">(warp.JaxCallableGraphMode method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.__init__">(warp.JaxModulePreloadMode method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.__init__">(warp.Kernel method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.__init__">(warp.Launch method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.__init__">(warp.Logger method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.MarchingCubes.html#warp.MarchingCubes.__init__">(warp.MarchingCubes method)</a>
 </li>
@@ -786,6 +789,10 @@
         <li><a href="api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture.__init__">(warp.ScopedCapture method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice.__init__">(warp.ScopedDevice method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.ScopedLogger.html#warp.ScopedLogger.__init__">(warp.ScopedLogger method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.ScopedLogLevel.html#warp.ScopedLogLevel.__init__">(warp.ScopedLogLevel method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.ScopedMemoryTracker.html#warp.ScopedMemoryTracker.__init__">(warp.ScopedMemoryTracker method)</a>
 </li>
@@ -972,6 +979,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.alignment">alignment (warp.tile attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.ALL_DEVICES">ALL_DEVICES (warp.JaxModulePreloadMode attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Allocator.html#warp.Allocator.allocate">allocate() (warp.Allocator method)</a>
 
       <ul>
@@ -1122,6 +1131,12 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.boundary_side_count">(warp.fem.Tetmesh method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.boundary_side_count_per_environment">boundary_side_count_per_environment (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.boundary_side_count_per_environment">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.CellBasedGeometryPartition.html#warp.fem.CellBasedGeometryPartition.boundary_side_index">boundary_side_index (warp.fem.CellBasedGeometryPartition attribute)</a>
 
       <ul>
@@ -1154,6 +1169,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.sparse.bsr_block_index.html#warp.sparse.bsr_block_index">bsr_block_index (in module warp.sparse)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress">bsr_compress() (in module warp.sparse)</a>
+</li>
       <li><a href="api_reference/_generated/warp.sparse.bsr_copy.html#warp.sparse.bsr_copy">bsr_copy() (in module warp.sparse)</a>
 </li>
       <li><a href="api_reference/_generated/warp.sparse.bsr_diag.html#warp.sparse.bsr_diag">bsr_diag() (in module warp.sparse)</a>
@@ -1185,6 +1202,10 @@
       <li><a href="api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose">bsr_set_transpose() (in module warp.sparse)</a>
 </li>
       <li><a href="api_reference/_generated/warp.sparse.bsr_set_zero.html#warp.sparse.bsr_set_zero">bsr_set_zero() (in module warp.sparse)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED.html#warp.sparse.BSR_STATUS_ROW_CAPACITY_EXCEEDED">BSR_STATUS_ROW_CAPACITY_EXCEEDED (in module warp.sparse)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.sparse.BSR_STATUS_SUCCESS.html#warp.sparse.BSR_STATUS_SUCCESS">BSR_STATUS_SUCCESS (in module warp.sparse)</a>
 </li>
       <li><a href="api_reference/_generated/warp.sparse.bsr_transposed.html#warp.sparse.bsr_transposed">bsr_transposed() (in module warp.sparse)</a>
 </li>
@@ -1612,6 +1633,8 @@
 </li>
         <li><a href="language_reference/_generated/warp.tile_dot.html#warp._src.lang.tile_dot">warp._src.lang.tile_dot()</a>
 </li>
+        <li><a href="language_reference/_generated/warp.tile_empty.html#warp._src.lang.tile_empty">warp._src.lang.tile_empty()</a>
+</li>
         <li><a href="language_reference/_generated/warp.tile_extract.html#warp._src.lang.tile_extract">warp._src.lang.tile_extract()</a>
 </li>
         <li><a href="language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft">warp._src.lang.tile_fft()</a>
@@ -1827,8 +1850,12 @@
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.camera_up">camera_up (warp.render.OpenGLRenderer property)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.can_access">can_access() (warp.Device method)</a>
+      <li><a href="api_reference/_generated/warp.can_access.html#warp.can_access">can_access() (in module warp)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.Device.html#warp.Device.can_access">(warp.Device method)</a>
 </li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.capacity">capacity (warp.array attribute)</a>
 
       <ul>
@@ -1875,6 +1902,8 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.cell_bounds">(warp.fem.Tetmesh attribute)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_bvh_groups">cell_bvh_groups() (warp.fem.Geometry method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.Hexmesh.html#warp.fem.Hexmesh.cell_bvh_id">cell_bvh_id (warp.fem.Hexmesh attribute)</a>
 
       <ul>
@@ -1921,6 +1950,12 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.cell_count">(warp.fem.Tetmesh method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.cell_count_per_environment">cell_count_per_environment (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.cell_count_per_environment">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.cell_deformation_gradient">cell_deformation_gradient (warp.fem.AdaptiveNanogrid attribute)</a>
 
       <ul>
@@ -1943,6 +1978,32 @@
         <li><a href="api_reference/_generated/warp.fem.Sides.html#warp.fem.Sides.cell_domain">(warp.fem.Sides method)</a>
 </li>
         <li><a href="api_reference/_generated/warp.fem.Subdomain.html#warp.fem.Subdomain.cell_domain">(warp.fem.Subdomain method)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_env">cell_env (warp.fem.Geometry property)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.geometry.DeformedGeometry.html#warp.fem.geometry.DeformedGeometry.cell_env">(warp.fem.geometry.DeformedGeometry property)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_env_arg_value">cell_env_arg_value() (warp.fem.Geometry method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.cell_env_index">cell_env_index (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.cell_env_index">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_environment_index">cell_environment_index (warp.fem.Geometry attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.cell_environment_index">(warp.fem.Grid2D attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.cell_environment_index">(warp.fem.Grid3D attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Hexmesh.html#warp.fem.Hexmesh.cell_environment_index">(warp.fem.Hexmesh attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.cell_environment_index">(warp.fem.Tetmesh attribute)</a>
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition.cell_index">cell_index (warp.fem.ExplicitGeometryPartition attribute)</a>
@@ -1972,7 +2033,13 @@
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_inverse_deformation_gradient">cell_inverse_deformation_gradient() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_lookup">cell_lookup (warp.fem.Geometry property)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.cell_lookup">(warp.fem.Grid2D property)</a>
 </li>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.cell_lookup">(warp.fem.Grid3D property)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.cell_measure">cell_measure (warp.fem.AdaptiveNanogrid attribute)</a>
 
       <ul>
@@ -1983,6 +2050,8 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.cell_measure">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_measure">cell_measure() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_measure_ratio">cell_measure_ratio (warp.fem.Geometry attribute)</a>
@@ -1997,8 +2066,6 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.cell_normal">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.cell_normal">cell_normal() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.PicQuadrature.html#warp.fem.PicQuadrature.cell_particle_indices">cell_particle_indices (warp.fem.PicQuadrature property)</a>
@@ -2047,6 +2114,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg">cg() (in module warp.optim.linear)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.CHECKED">CHECKED (warp.config.LaunchArrayAccessMode attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.cinit">cinit() (warp.tile method)</a>
 
       <ul>
@@ -2063,11 +2132,13 @@
         <li><a href="api_reference/_generated/warp.ScopedMemoryTracker.html#warp.ScopedMemoryTracker.clear">(warp.ScopedMemoryTracker method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.clear_jax_callable_graph_cache.html#warp.jax.ffi.clear_jax_callable_graph_cache">clear_jax_callable_graph_cache() (in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.clear_jax_callable_graph_cache.html#warp.clear_jax_callable_graph_cache">clear_jax_callable_graph_cache() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache">clear_kernel_cache() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.clear_lto_cache.html#warp.clear_lto_cache">clear_lto_cache() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.clear_status">clear_status() (warp.sparse.BsrMatrix method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.clone.html#warp.clone">clone() (in module warp)</a>
 </li>
@@ -2088,6 +2159,8 @@
       <li><a href="api_reference/_generated/warp.compile_aot_module.html#warp.compile_aot_module">compile_aot_module() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.compile_time_trace.html#warp.config.compile_time_trace">compile_time_trace (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.compute_cell_bvh_groups">compute_cell_bvh_groups (warp.fem.Geometry property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.compute_model_matrix">compute_model_matrix() (warp.render.OpenGLRenderer static method)</a>
 </li>
@@ -2177,6 +2250,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.curl.html#warp.fem.curl">curl (in module warp.fem)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.CURRENT_DEVICE">CURRENT_DEVICE (warp.JaxModulePreloadMode attribute)</a>
+</li>
   </ul></td>
 </tr></table>
 
@@ -2193,6 +2268,8 @@
         <li><a href="api_reference/_generated/warp.utils.AllocatorRmm.html#warp.utils.AllocatorRmm.deallocate">(warp.utils.AllocatorRmm method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.debug">debug() (warp.Logger method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Event.html#warp.Event.Flags.DEFAULT">DEFAULT (warp.Event.Flags attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.default_num_segments">default_num_segments (warp.render.OpenGLRenderer attribute)</a>
@@ -2254,21 +2331,13 @@
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.device_from_jax.html#warp.device_from_jax">device_from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.device_from_jax.html#warp.jax.device_from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.device_from_paddle.html#warp.device_from_paddle">device_from_paddle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_from_torch.html#warp.device_from_torch">device_from_torch() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_to_jax.html#warp.device_to_jax">device_to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.device_to_jax.html#warp.jax.device_to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.device_to_paddle.html#warp.device_to_paddle">device_to_paddle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.device_to_torch.html#warp.device_to_torch">device_to_torch() (in module warp)</a>
@@ -2305,10 +2374,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.DiscreteField.html#warp.fem.DiscreteField">DiscreteField (class in warp.fem)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.fem.div.html#warp.fem.div">div (in module warp.fem)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.fem.div.html#warp.fem.div">div (in module warp.fem)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.div_outer.html#warp.fem.div_outer">div_outer (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.GeometryField.html#warp.fem.GeometryField.divergence_dtype">divergence_dtype (warp.fem.GeometryField property)</a>
@@ -2410,11 +2479,7 @@
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_from_jax.html#warp.dtype_from_jax">dtype_from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.dtype_from_jax.html#warp.jax.dtype_from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_from_numpy.html#warp.dtype_from_numpy">dtype_from_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_from_paddle.html#warp.dtype_from_paddle">dtype_from_paddle() (in module warp)</a>
@@ -2422,11 +2487,7 @@
       <li><a href="api_reference/_generated/warp.dtype_from_torch.html#warp.dtype_from_torch">dtype_from_torch() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_to_jax.html#warp.dtype_to_jax">dtype_to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.dtype_to_jax.html#warp.jax.dtype_to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy">dtype_to_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.dtype_to_paddle.html#warp.dtype_to_paddle">dtype_to_paddle() (in module warp)</a>
@@ -2465,6 +2526,8 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.edge_count">(warp.fem.Tetmesh method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.edge_count_per_environment">edge_count_per_environment (warp.fem.Grid3D attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.edge_grid">edge_grid (warp.fem.Nanogrid property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.space.shape.SquareShapeFunction.html#warp.fem.space.shape.SquareShapeFunction.EDGE_NODE_COUNT">EDGE_NODE_COUNT (warp.fem.space.shape.SquareShapeFunction attribute)</a>
@@ -2539,6 +2602,14 @@
         <li><a href="api_reference/_generated/warp.fem.GeometryDomain.html#warp.fem.GeometryDomain.element_deformation_gradient">(warp.fem.GeometryDomain attribute)</a>
 </li>
         <li><a href="api_reference/_generated/warp.fem.Sides.html#warp.fem.Sides.element_deformation_gradient">(warp.fem.Sides property)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Cells.html#warp.fem.Cells.element_environment_index">element_environment_index (warp.fem.Cells property)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.GeometryDomain.html#warp.fem.GeometryDomain.element_environment_index">(warp.fem.GeometryDomain attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Sides.html#warp.fem.Sides.element_environment_index">(warp.fem.Sides property)</a>
 </li>
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.element_index.html#warp.fem.element_index">element_index (in module warp.fem)</a>
@@ -2735,6 +2806,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.config.enable_graph_capture_module_load_by_default.html#warp.config.enable_graph_capture_module_load_by_default">enable_graph_capture_module_load_by_default (in module warp.config)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.config.enable_mathdx_fft.html#warp.config.enable_mathdx_fft">enable_mathdx_fft (in module warp.config)</a>
+</li>
       <li><a href="api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm">enable_mathdx_gemm (in module warp.config)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver">enable_mathdx_solver (in module warp.config)</a>
@@ -2755,9 +2828,23 @@
         <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer.end_frame">(warp.render.UsdRenderer method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.environment_count">environment_count() (warp.fem.Geometry method)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.geometry.DeformedGeometry.html#warp.fem.geometry.DeformedGeometry.environment_count">(warp.fem.geometry.DeformedGeometry method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.environment_count">(warp.fem.Grid2D method)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.environment_count">(warp.fem.Grid3D method)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.environment_index.html#warp.fem.environment_index">environment_index (in module warp.fem)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.Polynomial.html#warp.fem.Polynomial.EQUISPACED_CLOSED">EQUISPACED_CLOSED (warp.fem.Polynomial attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Polynomial.html#warp.fem.Polynomial.EQUISPACED_OPEN">EQUISPACED_OPEN (warp.fem.Polynomial attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.error">error() (warp.Logger method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.FieldLike.html#warp.fem.FieldLike.eval_arg_value">eval_arg_value() (warp.fem.FieldLike method)</a>
 
@@ -2977,6 +3064,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.TimingResult.html#warp.TimingResult.filter">filter (warp.TimingResult attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.filter_mode">filter_mode (warp.Texture property)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.find_cell">find_cell (warp.fem.AdaptiveNanogrid attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.fine_ijk">fine_ijk (warp.fem.AdaptiveNanogrid attribute)</a>
@@ -2999,14 +3088,16 @@
 </li>
       <li><a href="api_reference/_generated/warp.from_dlpack.html#warp.from_dlpack">from_dlpack() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.from_environment_voxels">from_environment_voxels() (warp.fem.AdaptiveNanogrid class method)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.from_environment_voxels">(warp.fem.Nanogrid class method)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.from_ipc_handle.html#warp.from_ipc_handle">from_ipc_handle() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.from_jax.html#warp.from_jax">from_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.from_jax.html#warp.jax.from_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.from_numpy.html#warp.from_numpy">from_numpy() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.from_paddle.html#warp.from_paddle">from_paddle() (in module warp)</a>
@@ -3155,9 +3246,9 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.get_grid_info">get_grid_info() (warp.Volume method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.get_jax_callable_default_graph_cache_max.html#warp.jax.ffi.get_jax_callable_default_graph_cache_max">get_jax_callable_default_graph_cache_max() (in module warp.jax.ffi)</a>
-</li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_kernel_hooks">get_kernel_hooks() (warp.Module method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.get_logger.html#warp.get_logger">get_logger() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.get_mangled_name">get_mangled_name() (warp.Kernel method)</a>
 </li>
@@ -3165,10 +3256,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.get_mempool_used_mem_current.html#warp.get_mempool_used_mem_current">get_mempool_used_mem_current() (in module warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high">get_mempool_used_mem_high() (in module warp)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.get_mempool_used_mem_high.html#warp.get_mempool_used_mem_high">get_mempool_used_mem_high() (in module warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.get_module.html#warp.get_module">get_module() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.get_module_hash">get_module_hash() (warp.Module method)</a>
@@ -3259,8 +3350,6 @@
 </li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm">GraphColoringAlgorithm (class in warp.utils)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode">GraphMode (class in warp.jax.ffi)</a>
-</li>
       <li><a href="api_reference/_generated/warp.utils.GraphColoringAlgorithm.html#warp.utils.GraphColoringAlgorithm.GREEDY">GREEDY (warp.utils.GraphColoringAlgorithm attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D">Grid2D (class in warp.fem)</a>
@@ -3299,15 +3388,11 @@
 </li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.hash_module">hash_module() (warp.Module method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid">HashGrid (class in warp)</a>
-</li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api_reference/_generated/warp.HashGrid.html#warp.HashGrid">HashGrid (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.HashGridQuery.html#warp.HashGridQuery">HashGridQuery (class in warp)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.HashGridQueryD.html#warp.HashGridQueryD">HashGridQueryD (class in warp)</a>
-</li>
-      <li><a href="api_reference/_generated/warp.HashGridQueryH.html#warp.HashGridQueryH">HashGridQueryH (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.height">height (warp.Texture property)</a>
 </li>
@@ -3360,6 +3445,8 @@
       <li><a href="api_reference/_generated/warp.inf_constant.html#warp.inf">inf (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Kernel.html#warp.Kernel.infer_argument_types">infer_argument_types() (warp.Kernel method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.info">info() (warp.Logger method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.init.html#warp.init">init() (in module warp)</a>
 </li>
@@ -3417,10 +3504,10 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.types.is_array.html#warp.types.is_array">is_array() (in module warp.types)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Function.html#warp.Function.is_builtin">is_builtin() (warp.Function method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_capturing">is_capturing (warp.Device property)</a>
 
       <ul>
@@ -3443,6 +3530,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.is_cpu_available.html#warp.is_cpu_available">is_cpu_available() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cpu_gpu_atomic_supported">is_cpu_gpu_atomic_supported (warp.Device attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cpu_memory_access_from_gpu_supported">is_cpu_memory_access_from_gpu_supported (warp.Device attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_cubin_supported">is_cubin_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.is_cubql_available.html#warp.is_cubql_available">is_cubql_available() (in module warp)</a>
@@ -3458,6 +3549,8 @@
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.is_flipped">is_flipped (warp.fem.Grid2D attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.types.is_float.html#warp.types.is_float">is_float() (in module warp.types)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_gpu_memory_access_from_cpu_supported">is_gpu_memory_access_from_cpu_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.is_index">is_index (warp.Volume property)</a>
 </li>
@@ -3478,6 +3571,8 @@
       <li><a href="api_reference/_generated/warp.Device.html#warp.Device.is_mempool_supported">is_mempool_supported (warp.Device attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.is_mempool_supported.html#warp.is_mempool_supported">is_mempool_supported() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.is_mipmapped">is_mipmapped (warp.Texture property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.is_peer_access_enabled.html#warp.is_peer_access_enabled">is_peer_access_enabled() (in module warp)</a>
 </li>
@@ -3519,18 +3614,18 @@
 </li>
       <li><a href="api_reference/_generated/warp.autograd.jacobian_plot.html#warp.autograd.jacobian_plot">jacobian_plot() (in module warp.autograd)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.JAX">JAX (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.JAX">JAX (warp.JaxCallableGraphMode attribute)</a>
 </li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
-      <li><a href="api_reference/_generated/warp.jax.ffi.jax_callable.html#warp.jax.ffi.jax_callable">jax_callable() (in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.jax_callable.html#warp.jax_callable">jax_callable() (in module warp)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.custom_call.jax_kernel.html#warp.jax.custom_call.jax_kernel">jax_kernel() (in module warp.jax.custom_call)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.ffi.jax_kernel.html#warp.jax.ffi.jax_kernel">(in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.jax_kernel.html#warp.jax_kernel">jax_kernel() (in module warp)</a>
 </li>
-      </ul></li>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode">JaxCallableGraphMode (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode">JaxModulePreloadMode (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.fem.jump.html#warp.fem.jump">jump (in module warp.fem)</a>
 </li>
   </ul></td>
@@ -3569,7 +3664,11 @@
         <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.launch">(warp.Launch method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.config.launch_array_access_mode.html#warp.config.launch_array_access_mode">launch_array_access_mode (in module warp.config)</a>
+</li>
       <li><a href="api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled">launch_tiled() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode">LaunchArrayAccessMode (class in warp.config)</a>
 </li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.layout">layout (warp.tile attribute)</a>
 </li>
@@ -3603,8 +3702,6 @@
 </li>
       <li><a href="api_reference/_generated/warp.ln10_constant.html#warp.ln10">ln10 (in module warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.LN2.html#warp.LN2">LN2 (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.ln2_constant.html#warp.ln2">ln2 (in module warp)</a>
@@ -3615,6 +3712,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_address">load_from_address() (warp.Volume class method)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_numpy">load_from_numpy() (warp.Volume class method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_from_nvdb">load_from_nvdb() (warp.Volume class method)</a>
@@ -3626,6 +3725,20 @@
       <li><a href="api_reference/_generated/warp.Volume.html#warp.Volume.load_next_grid">load_next_grid() (warp.Volume method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Polynomial.html#warp.fem.Polynomial.LOBATTO_GAUSS_LEGENDRE">LOBATTO_GAUSS_LEGENDRE (warp.fem.Polynomial attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.local_cell_index">local_cell_index (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.local_cell_index">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.local_side_index">local_side_index (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.local_side_index">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.local_side_index_from_res">local_side_index_from_res (warp.fem.Grid2D attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.FunctionSpace.html#warp.fem.FunctionSpace.local_value_map_inner">local_value_map_inner() (warp.fem.FunctionSpace static method)</a>
 </li>
@@ -3646,6 +3759,18 @@
       <li><a href="api_reference/_generated/warp.LOG2E.html#warp.LOG2E">LOG2E (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.log2e_constant.html#warp.log2e">log2e (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.LOG_DEBUG.html#warp.LOG_DEBUG">LOG_DEBUG (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.LOG_ERROR.html#warp.LOG_ERROR">LOG_ERROR (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.LOG_INFO.html#warp.LOG_INFO">LOG_INFO (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.config.log_level.html#warp.config.log_level">log_level (in module warp.config)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.LOG_WARNING.html#warp.LOG_WARNING">LOG_WARNING (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger">Logger (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.LONG_AXIS">LONG_AXIS (warp.fem.Grid2D attribute)</a>
 </li>
@@ -4071,6 +4196,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.MeshQueryRay.html#warp.MeshQueryRay">MeshQueryRay (class in warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.mip_filter_mode">mip_filter_mode (warp.Texture property)</a>
+</li>
       <li><a href="api_reference/_generated/warp.TextureAddressMode.html#warp.TextureAddressMode.MIRROR">MIRROR (warp.TextureAddressMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.config.mode.html#warp.config.mode">mode (in module warp.config)</a>
@@ -4102,12 +4229,6 @@
         <li><a href="api_reference/warp_fem_space_shape.html#module-warp.fem.space.shape">warp.fem.space.shape</a>
 </li>
         <li><a href="api_reference/warp_fem_utils.html#module-warp.fem.utils">warp.fem.utils</a>
-</li>
-        <li><a href="api_reference/warp_jax.html#module-warp.jax">warp.jax</a>
-</li>
-        <li><a href="api_reference/warp_jax_custom_call.html#module-warp.jax.custom_call">warp.jax.custom_call</a>
-</li>
-        <li><a href="api_reference/warp_jax_ffi.html#module-warp.jax.ffi">warp.jax.ffi</a>
 </li>
         <li><a href="api_reference/warp_optim.html#module-warp.optim">warp.optim</a>
 </li>
@@ -4150,6 +4271,10 @@
         <li><a href="api_reference/_generated/warp.fem.GeometryDomain.html#warp.fem.GeometryDomain.name">(warp.fem.GeometryDomain property)</a>
 </li>
         <li><a href="api_reference/_generated/warp.fem.GeometryPartition.html#warp.fem.GeometryPartition.name">(warp.fem.GeometryPartition property)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.name">(warp.fem.Grid2D property)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.name">(warp.fem.Grid3D property)</a>
 </li>
         <li><a href="api_reference/_generated/warp.fem.ImplicitField.html#warp.fem.ImplicitField.name">(warp.fem.ImplicitField property)</a>
 </li>
@@ -4328,9 +4453,11 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.NonconformingField.html#warp.fem.NonconformingField">NonconformingField (class in warp.fem)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.NONE">NONE (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.NONE">NONE (warp.JaxCallableGraphMode attribute)</a>
 
       <ul>
+        <li><a href="api_reference/_generated/warp.JaxModulePreloadMode.html#warp.JaxModulePreloadMode.NONE">(warp.JaxModulePreloadMode attribute)</a>
+</li>
         <li><a href="api_reference/_generated/warp.RegisteredGLBuffer.html#warp.RegisteredGLBuffer.NONE">(warp.RegisteredGLBuffer attribute)</a>
 </li>
         <li><a href="api_reference/_generated/warp.TextureResourceFlags.html#warp.TextureResourceFlags.NONE">(warp.TextureResourceFlags attribute)</a>
@@ -4365,6 +4492,8 @@
       <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.num_channels">num_channels (warp.Texture property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.num_instances">num_instances (warp.render.OpenGLRenderer property)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.Texture.html#warp.Texture.num_mip_levels">num_mip_levels (warp.Texture property)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.num_shapes">num_shapes (warp.render.OpenGLRenderer property)</a>
 </li>
@@ -4644,8 +4773,6 @@
         <li><a href="api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer.register_body">(warp.render.UsdRenderer method)</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.register_ffi_callback.html#warp.jax.ffi.register_ffi_callback">register_ffi_callback() (in module warp.jax.ffi)</a>
-</li>
       <li><a href="api_reference/_generated/warp.Module.html#warp.Module.register_function">register_function() (warp.Module method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.register_input_processor">register_input_processor() (warp.render.OpenGLRenderer method)</a>
@@ -4665,7 +4792,11 @@
       <li><a href="api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature.CachedFormula">RegularQuadrature.CachedFormula (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.CaptureMode.html#warp.CaptureMode.RELAXED">RELAXED (warp.CaptureMode attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.RELAXED">(warp.config.LaunchArrayAccessMode attribute)</a>
 </li>
+      </ul></li>
   </ul></td>
   <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.remove_shape_instance">remove_shape_instance() (warp.render.OpenGLRenderer method)</a>
@@ -4790,6 +4921,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.tile.html#warp.tile.round_up">round_up() (warp.tile static method)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.row_counts">row_counts (warp.sparse.BsrMatrix attribute)</a>
+</li>
       <li><a href="api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode">runlength_encode() (in module warp.utils)</a>
 </li>
   </ul></td>
@@ -4852,6 +4985,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.ScopedDevice.html#warp.ScopedDevice">ScopedDevice (class in warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.ScopedLogger.html#warp.ScopedLogger">ScopedLogger (class in warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.ScopedLogLevel.html#warp.ScopedLogLevel">ScopedLogLevel (class in warp)</a>
+</li>
       <li><a href="api_reference/_generated/warp.ScopedMemoryTracker.html#warp.ScopedMemoryTracker">ScopedMemoryTracker (class in warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.ScopedMempool.html#warp.ScopedMempool">ScopedMempool (class in warp)</a>
@@ -4878,7 +5015,7 @@
 </li>
       <li><a href="api_reference/_generated/warp.Launch.html#warp.Launch.set_dim">set_dim() (warp.Launch method)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.set_jax_callable_default_graph_cache_max.html#warp.jax.ffi.set_jax_callable_default_graph_cache_max">set_jax_callable_default_graph_cache_max() (in module warp.jax.ffi)</a>
+      <li><a href="api_reference/_generated/warp.set_logger.html#warp.set_logger">set_logger() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.set_mempool_access_enabled.html#warp.set_mempool_access_enabled">set_mempool_access_enabled() (in module warp)</a>
 </li>
@@ -4996,6 +5133,12 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.side_count">(warp.fem.Tetmesh method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.side_count_per_environment">side_count_per_environment (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.side_count_per_environment">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.side_deformation_gradient">side_deformation_gradient (warp.fem.Grid2D attribute)</a>
 
       <ul>
@@ -5008,6 +5151,20 @@
       </ul></li>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_deformation_gradient">side_deformation_gradient() (warp.fem.Geometry static method)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.side_env_index">side_env_index (warp.fem.Grid2D attribute)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_environment_index">side_environment_index (warp.fem.Geometry attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.side_environment_index">(warp.fem.Grid2D attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.side_environment_index">(warp.fem.Grid3D attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Hexmesh.html#warp.fem.Hexmesh.side_environment_index">(warp.fem.Hexmesh attribute)</a>
+</li>
+        <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.side_environment_index">(warp.fem.Tetmesh attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.side_from_cell_coords">side_from_cell_coords (warp.fem.AdaptiveNanogrid attribute)</a>
 
       <ul>
@@ -5090,6 +5247,8 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.side_measure">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_measure">side_measure() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.side_measure_ratio">side_measure_ratio (warp.fem.AdaptiveNanogrid attribute)</a>
@@ -5102,8 +5261,6 @@
         <li><a href="api_reference/_generated/warp.fem.Nanogrid.html#warp.fem.Nanogrid.side_measure_ratio">(warp.fem.Nanogrid attribute)</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_measure_ratio">side_measure_ratio() (warp.fem.Geometry static method)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.SpaceTopology.html#warp.fem.SpaceTopology.side_neighbor_node_counts">side_neighbor_node_counts() (warp.fem.SpaceTopology static method)</a>
@@ -5312,6 +5469,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.static.html#warp.static">static() (in module warp)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_message">status_message() (warp.sparse.BsrMatrix method)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync">status_sync() (warp.sparse.BsrMatrix method)</a>
+</li>
       <li><a href="api_reference/_generated/warp.optim.Adam.html#warp.optim.Adam.step">step() (warp.optim.Adam method)</a>
 
       <ul>
@@ -5339,6 +5500,8 @@
       <li><a href="api_reference/_generated/warp.stream_from_torch.html#warp.stream_from_torch">stream_from_torch() (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.stream_to_torch.html#warp.stream_to_torch">stream_to_torch() (in module warp)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.config.LaunchArrayAccessMode.html#warp.config.LaunchArrayAccessMode.STRICT">STRICT (warp.config.LaunchArrayAccessMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.array.html#warp.array.strides">strides (warp.array attribute)</a>
 
@@ -5497,11 +5660,7 @@
       <li><a href="api_reference/_generated/warp.fem.to_inner_cell.html#warp.fem.to_inner_cell">to_inner_cell (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.to_jax.html#warp.to_jax">to_jax() (in module warp)</a>
-
-      <ul>
-        <li><a href="api_reference/_generated/warp.jax.to_jax.html#warp.jax.to_jax">(in module warp.jax)</a>
 </li>
-      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.to_outer_cell.html#warp.fem.to_outer_cell">to_outer_cell (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.to_paddle.html#warp.to_paddle">to_paddle() (in module warp)</a>
@@ -5834,10 +5993,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.vec2ul.html#warp.vec2ul">vec2ul (class in warp)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec2us.html#warp.vec2us">vec2us (class in warp)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.vec3.html#warp.vec3">vec3 (in module warp)</a>
 </li>
       <li><a href="api_reference/_generated/warp.vec3b.html#warp.vec3b">vec3b (class in warp)</a>
@@ -5922,6 +6081,12 @@
         <li><a href="api_reference/_generated/warp.fem.Tetmesh.html#warp.fem.Tetmesh.vertex_count">(warp.fem.Tetmesh method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.vertex_count_per_environment">vertex_count_per_environment (warp.fem.Grid2D attribute)</a>
+
+      <ul>
+        <li><a href="api_reference/_generated/warp.fem.Grid3D.html#warp.fem.Grid3D.vertex_count_per_environment">(warp.fem.Grid3D attribute)</a>
+</li>
+      </ul></li>
       <li><a href="api_reference/_generated/warp.fem.space.shape.SquareShapeFunction.html#warp.fem.space.shape.SquareShapeFunction.VERTEX_NODE_COUNT">VERTEX_NODE_COUNT (warp.fem.space.shape.SquareShapeFunction attribute)</a>
 
       <ul>
@@ -5964,6 +6129,8 @@
         <li><a href="api_reference/_generated/warp.Stream.html#warp.Stream.wait_stream">(warp.Stream method)</a>
 </li>
       </ul></li>
+      <li><a href="api_reference/_generated/warp.Logger.html#warp.Logger.warning">warning() (warp.Logger method)</a>
+</li>
       <li>
     warp
 
@@ -5971,7 +6138,7 @@
         <li><a href="api_reference/warp.html#module-warp">module</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP">WARP (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP">WARP (warp.JaxCallableGraphMode attribute)</a>
 </li>
       <li>
     warp._src.lang.abs()
@@ -7072,6 +7239,8 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere.html#warp._src.lang.sample_unit_sphere">built-in function</a>
 </li>
       </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_sphere_surface()
 
@@ -7079,8 +7248,6 @@
         <li><a href="language_reference/_generated/warp.sample_unit_sphere_surface.html#warp._src.lang.sample_unit_sphere_surface">built-in function</a>
 </li>
       </ul></li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li>
     warp._src.lang.sample_unit_square()
 
@@ -7401,6 +7568,13 @@
 
       <ul>
         <li><a href="language_reference/_generated/warp.tile_dot.html#warp._src.lang.tile_dot">built-in function</a>
+</li>
+      </ul></li>
+      <li>
+    warp._src.lang.tile_empty()
+
+      <ul>
+        <li><a href="language_reference/_generated/warp.tile_empty.html#warp._src.lang.tile_empty">built-in function</a>
 </li>
       </ul></li>
       <li>
@@ -8097,27 +8271,6 @@
 </li>
       </ul></li>
       <li>
-    warp.jax
-
-      <ul>
-        <li><a href="api_reference/warp_jax.html#module-warp.jax">module</a>
-</li>
-      </ul></li>
-      <li>
-    warp.jax.custom_call
-
-      <ul>
-        <li><a href="api_reference/warp_jax_custom_call.html#module-warp.jax.custom_call">module</a>
-</li>
-      </ul></li>
-      <li>
-    warp.jax.ffi
-
-      <ul>
-        <li><a href="api_reference/warp_jax_ffi.html#module-warp.jax.ffi">module</a>
-</li>
-      </ul></li>
-      <li>
     warp.optim
 
       <ul>
@@ -8159,9 +8312,9 @@
         <li><a href="api_reference/warp_utils.html#module-warp.utils">module</a>
 </li>
       </ul></li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP_STAGED">WARP_STAGED (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP_STAGED">WARP_STAGED (warp.JaxCallableGraphMode attribute)</a>
 </li>
-      <li><a href="api_reference/_generated/warp.jax.ffi.GraphMode.html#warp.jax.ffi.GraphMode.WARP_STAGED_EX">WARP_STAGED_EX (warp.jax.ffi.GraphMode attribute)</a>
+      <li><a href="api_reference/_generated/warp.JaxCallableGraphMode.html#warp.JaxCallableGraphMode.WARP_STAGED_EX">WARP_STAGED_EX (warp.JaxCallableGraphMode attribute)</a>
 </li>
       <li><a href="api_reference/_generated/warp.WarpCodegenAttributeError.html#warp.WarpCodegenAttributeError">WarpCodegenAttributeError</a>
 </li>
