@@ -42,6 +42,10 @@
   closest-hit bound and more aggressive subtree pruning. ([GH-1529](https://github.com/NVIDIA/warp/issues/1529))
 - Report out-of-bounds shared and register tile indexing with coordinate-specific debug-mode diagnostics, including
   CUDA device-side assertions ([GH-1483](https://github.com/NVIDIA/warp/issues/1483)).
+- Reduce generated code size and register pressure for unrolled loops containing predicate-guarded blocks by skipping
+  `wp::where` phi merges for symbols that no downstream statement reads. Fully-unrolled loops previously stacked these
+  merges across every iteration, producing kernels with hundreds of unused temporary variables
+  ([GH-1497](https://github.com/NVIDIA/warp/issues/1497)).
 
 ### Fixed
 

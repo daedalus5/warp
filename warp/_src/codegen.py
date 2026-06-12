@@ -1057,6 +1057,134 @@ def synchronized(rlock: threading.RLock | None = None):
     return decorator
 
 
+class _IfLiveOutAnalysis(ast.NodeVisitor):
+    """Compute live-out name sets for every ``ast.If`` in a function body.
+
+    A name is in ``live_out[if_node]`` iff some load of that name is reachable
+    from the if's exit before any unconditional store. The analysis is a
+    standard backward dataflow pass with fixed-point iteration over loops, so
+    loop-back reads (next iteration reads of names assigned in the current
+    iteration) are correctly counted as live. ``emit_If`` consults this map
+    to skip ``wp::where`` phi emission for symbols that the rest of the
+    function cannot observe.
+    """
+
+    def __init__(self):
+        self.live_out: dict[int, set[str]] = {}
+
+    def analyze(self, fn_def: ast.FunctionDef) -> None:
+        self._block(fn_def.body, set())
+
+    def _loads(self, node) -> set[str]:
+        if node is None:
+            return set()
+        names: set[str] = set()
+        for sub in ast.walk(node):
+            if isinstance(sub, ast.Name) and isinstance(sub.ctx, ast.Load):
+                names.add(sub.id)
+        return names
+
+    def _stored_names(self, target) -> set[str]:
+        if isinstance(target, ast.Name) and isinstance(target.ctx, ast.Store):
+            return {target.id}
+        if isinstance(target, (ast.Tuple, ast.List)):
+            out: set[str] = set()
+            for elt in target.elts:
+                if isinstance(elt, ast.Starred):
+                    out |= self._stored_names(elt.value)
+                else:
+                    out |= self._stored_names(elt)
+            return out
+        # Subscript/Attribute targets do not kill a name (they mutate state
+        # reachable from the name, but the name binding survives).
+        return set()
+
+    def _target_uses(self, target) -> set[str]:
+        # Loads embedded in a store target: e.g. ``a[i] = v`` reads ``a`` and ``i``.
+        if isinstance(target, ast.Name):
+            return set()
+        return self._loads(target)
+
+    def _stmt(self, stmt: ast.stmt, live_after: set[str]) -> set[str]:
+        if isinstance(stmt, ast.Assign):
+            defs: set[str] = set()
+            for t in stmt.targets:
+                defs |= self._stored_names(t)
+            uses = self._loads(stmt.value)
+            for t in stmt.targets:
+                uses |= self._target_uses(t)
+            return (live_after - defs) | uses
+        if isinstance(stmt, ast.AugAssign):
+            uses = self._loads(stmt.value)
+            if isinstance(stmt.target, ast.Name):
+                # ``x += y`` reads x then writes x; net effect: x is live-in.
+                uses.add(stmt.target.id)
+                return live_after | uses
+            return live_after | uses | self._target_uses(stmt.target)
+        if isinstance(stmt, ast.AnnAssign):
+            defs = self._stored_names(stmt.target) if stmt.target else set()
+            uses = self._loads(stmt.value) if stmt.value is not None else set()
+            uses |= self._target_uses(stmt.target)
+            return (live_after - defs) | uses
+        if isinstance(stmt, ast.Expr):
+            return live_after | self._loads(stmt.value)
+        if isinstance(stmt, ast.Return):
+            return self._loads(stmt.value)
+        if isinstance(stmt, ast.If):
+            # Record live_out for this If before recursing.
+            self.live_out[id(stmt)] = set(live_after)
+            body_in = self._block(stmt.body, live_after)
+            orelse_in = self._block(stmt.orelse, live_after) if stmt.orelse else live_after
+            return body_in | orelse_in | self._loads(stmt.test)
+        if isinstance(stmt, ast.For):
+            target_defs = self._stored_names(stmt.target)
+            iter_uses = self._loads(stmt.iter)
+            # Fixed-point: live-after-body grows until it stabilizes. Caps at
+            # 'all names mentioned anywhere in the body' so termination is
+            # guaranteed.
+            live_at_body_exit: set[str] = set(live_after)
+            for _ in range(64):
+                body_in = self._block(stmt.body, live_at_body_exit)
+                new_lae = live_after | body_in | iter_uses
+                if new_lae == live_at_body_exit:
+                    break
+                live_at_body_exit = new_lae
+            # Process orelse with the same live_after (Python's for-else runs
+            # when the loop completes normally).
+            orelse_in = self._block(stmt.orelse, live_after) if stmt.orelse else live_after
+            body_in = self._block(stmt.body, live_at_body_exit)
+            return ((body_in | orelse_in) - target_defs) | iter_uses
+        if isinstance(stmt, ast.While):
+            test_uses = self._loads(stmt.test)
+            live_at_body_exit: set[str] = set(live_after)
+            for _ in range(64):
+                body_in = self._block(stmt.body, live_at_body_exit)
+                new_lae = live_after | body_in | test_uses
+                if new_lae == live_at_body_exit:
+                    break
+                live_at_body_exit = new_lae
+            orelse_in = self._block(stmt.orelse, live_after) if stmt.orelse else live_after
+            body_in = self._block(stmt.body, live_at_body_exit)
+            return body_in | orelse_in | test_uses
+        if isinstance(stmt, (ast.Break, ast.Continue, ast.Pass)):
+            # Conservative: assume live_after is preserved. The phi-elision
+            # decisions guarded by this analysis only need a sound (over-
+            # approximating) result, not a precise one.
+            return live_after
+        if isinstance(stmt, ast.FunctionDef):
+            # Nested function defs have their own scope; only the def name is
+            # introduced in this scope.
+            return live_after - {stmt.name}
+        # Fallback: treat the whole node as a use site to stay sound.
+        return live_after | self._loads(stmt)
+
+    def _block(self, stmts: list[ast.stmt], live_after: set[str]) -> set[str]:
+        live = live_after
+        for stmt in reversed(stmts):
+            live = self._stmt(stmt, live)
+        return live
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -1389,6 +1517,23 @@ class Adjoint:
         # update symbol map for each argument
         for a in adj.args:
             adj.symbols[a.label] = a
+
+        # Precompute per-If live-out sets so emit_If can elide phi (wp::where)
+        # emissions for symbols that the rest of the function cannot observe.
+        # Without this, unrolled loops accumulate dead-temp phis across every
+        # iteration (GH-1497).
+        adj.if_live_out: dict[int, set[str]] = {}
+        fn_def = adj.tree.body[0]
+        if isinstance(fn_def, ast.FunctionDef):
+            analysis = _IfLiveOutAnalysis()
+            try:
+                analysis.analyze(fn_def)
+                adj.if_live_out = analysis.live_out
+            except Exception:
+                # Liveness analysis is an optimization. If anything goes
+                # wrong, fall back to the conservative "always emit phi"
+                # behavior used before this pass existed.
+                adj.if_live_out = {}
 
         # recursively evaluate function body
         try:
@@ -2383,6 +2528,12 @@ class Adjoint:
                     adj.eval(stmt)
             return None
 
+        # Names that may be read after this if; symbols outside this set
+        # cannot affect any downstream value, so we skip their phi merges.
+        # ``None`` means analysis didn't run for this node, in which case we
+        # fall back to emitting all phis (the pre-GH-1497 behavior).
+        live_out = adj.if_live_out.get(id(node))
+
         # save symbol map
         symbols_prev = adj.symbols.copy()
 
@@ -2402,9 +2553,24 @@ class Adjoint:
             var2 = adj.symbols[sym]
 
             if var1 != var2:
-                # insert a phi function that selects var1, var2 based on cond
-                out = adj.add_builtin_call("where", [cond, var2, var1])
-                adj.symbols[sym] = out
+                if live_out is None or sym in live_out:
+                    # insert a phi function that selects var1, var2 based on cond
+                    out = adj.add_builtin_call("where", [cond, var2, var1])
+                    adj.symbols[sym] = out
+                else:
+                    # Symbol is dead after this if; revert to its pre-if value
+                    # so subsequent code (e.g. a later unrolled iteration) sees
+                    # the same starting state as the first iteration.
+                    adj.symbols[sym] = var1
+
+        # Drop newly-introduced dead symbols from the symbol table. Without
+        # this, an unrolled loop's iteration N+1 would see the iteration N
+        # value in symbols_prev and emit a phi for it, which is exactly the
+        # bloat GH-1497 reports.
+        if live_out is not None:
+            for sym in list(adj.symbols.keys()):
+                if sym not in symbols_prev and sym not in live_out:
+                    del adj.symbols[sym]
 
         symbols_prev = adj.symbols.copy()
 
@@ -2425,10 +2591,18 @@ class Adjoint:
             var2 = adj.symbols[sym]
 
             if var1 != var2:
-                # insert a phi function that selects var1, var2 based on cond
-                # note the reversed order of vars since we want to use !cond as our select
-                out = adj.add_builtin_call("where", [cond, var1, var2])
-                adj.symbols[sym] = out
+                if live_out is None or sym in live_out:
+                    # insert a phi function that selects var1, var2 based on cond
+                    # note the reversed order of vars since we want to use !cond as our select
+                    out = adj.add_builtin_call("where", [cond, var1, var2])
+                    adj.symbols[sym] = out
+                else:
+                    adj.symbols[sym] = var1
+
+        if live_out is not None:
+            for sym in list(adj.symbols.keys()):
+                if sym not in symbols_prev and sym not in live_out:
+                    del adj.symbols[sym]
 
     def emit_IfExp(adj, node):
         cond = adj.eval(node.test)

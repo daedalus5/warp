@@ -414,6 +414,234 @@ def test_short_circuit_or_grad(test: unittest.TestCase, device):
     np.testing.assert_allclose(tape.gradients[x].numpy(), [1.0, 3.0, 1.0, 1.0])
 
 
+# ---------------------------------------------------------------------------
+# Phi-elision in unrolled loops with predicate-guarded blocks (GH-1497).
+#
+# Codegen used to emit a ``wp::where`` phi at the end of every if-block for
+# any reassigned symbol, including dead temporaries. With fully-unrolled
+# loops this stacked into O(iters * temps) merge calls per kernel. The AST
+# liveness pass in ``emit_If`` now skips phis for symbols that no downstream
+# statement reads.
+#
+# These tests pin both the optimization (the GH-1497 reproducer matches a
+# ``continue`` reference) and the cases it must NOT regress: loop-back
+# accumulators, read-after-if temporaries, and ``if-else`` both-branch
+# assignments. The gradient test pins adjoint correctness end-to-end.
+
+
+@wp.kernel
+def test_phi_elision_predicate_kernel(
+    c_arr: wp.array2d(dtype=wp.float32),
+    x_arr: wp.array(dtype=wp.float32),
+    out: wp.array(dtype=wp.float32),
+):
+    # GH-1497 reproducer: predicate-guarded block whose temps a, b, d, v are
+    # dead after the if. The inner loop unrolls fully.
+    tid = wp.tid()
+    max_val = wp.float(-1e20)
+    for p in range(5):
+        for q in range(5):
+            c = c_arr[p, q]
+            if c != 0.0:
+                a = wp.float(p + 1)
+                b = wp.float(q + 1)
+                d = c * (a + b)
+                v = x_arr[tid] * d
+                if v > max_val:
+                    max_val = v
+    out[tid] = max_val
+
+
+@wp.kernel
+def test_phi_elision_continue_kernel(
+    c_arr: wp.array2d(dtype=wp.float32),
+    x_arr: wp.array(dtype=wp.float32),
+    out: wp.array(dtype=wp.float32),
+):
+    # Equivalent control flow via ``continue``; the inner loop is dynamic
+    # (Warp refuses to unroll loops containing ``continue``). Serves as the
+    # bit-identical reference for the predicate form.
+    tid = wp.tid()
+    max_val = wp.float(-1e20)
+    for p in range(5):
+        for q in range(5):
+            c = c_arr[p, q]
+            if c == 0.0:
+                continue
+            a = wp.float(p + 1)
+            b = wp.float(q + 1)
+            d = c * (a + b)
+            v = x_arr[tid] * d
+            if v > max_val:
+                max_val = v
+    out[tid] = max_val
+
+
+def test_phi_elision_predicate_matches_continue(test: unittest.TestCase, device):
+    """Predicate form produces bit-identical output to the ``continue`` form."""
+    rng = np.random.default_rng(0)
+    n = 64
+    for c_np in (
+        np.zeros((5, 5), dtype=np.float32),
+        rng.standard_normal((5, 5)).astype(np.float32),
+        (rng.random((5, 5)) < 0.3).astype(np.float32) * rng.standard_normal((5, 5)).astype(np.float32),
+        np.ones((5, 5), dtype=np.float32),
+    ):
+        x_np = rng.standard_normal(n).astype(np.float32)
+        c_arr = wp.array(c_np, dtype=wp.float32, device=device)
+        x_arr = wp.array(x_np, dtype=wp.float32, device=device)
+        out_p = wp.zeros(n, dtype=wp.float32, device=device)
+        out_c = wp.zeros(n, dtype=wp.float32, device=device)
+        wp.launch(test_phi_elision_predicate_kernel, n, inputs=[c_arr, x_arr, out_p], device=device)
+        wp.launch(test_phi_elision_continue_kernel, n, inputs=[c_arr, x_arr, out_c], device=device)
+        np.testing.assert_array_equal(out_p.numpy(), out_c.numpy())
+
+
+@wp.kernel
+def test_phi_elision_read_after_if_kernel(
+    cond_arr: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    # ``x`` is read after the if-block, so the phi must survive even though
+    # ``x`` is introduced via reassignment inside the branch.
+    x = wp.float(-1.0)
+    if cond_arr[tid] != 0:
+        x = wp.float(7.0)
+    out[tid] = x
+
+
+def test_phi_elision_read_after_if(test: unittest.TestCase, device):
+    """Symbol read after the if must keep its phi merge."""
+    cond = np.array([0, 1, 0, 1, 1, 0], dtype=np.int32)
+    cw = wp.array(cond, device=device)
+    ow = wp.zeros(cond.size, dtype=wp.float32, device=device)
+    wp.launch(test_phi_elision_read_after_if_kernel, cond.size, inputs=[cw, ow], device=device)
+    expected = np.where(cond != 0, 7.0, -1.0).astype(np.float32)
+    np.testing.assert_array_equal(ow.numpy(), expected)
+
+
+@wp.kernel
+def test_phi_elision_accumulator_kernel(
+    arr: wp.array2d(dtype=wp.float32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    # Loop-back live: ``total`` is read-and-written inside the if, so the next
+    # unrolled iteration depends on the previous iteration's phi.
+    total = wp.float(0.0)
+    for i in range(6):
+        if arr[tid, i] > 0.0:
+            total = total + arr[tid, i] * arr[tid, i]
+    out[tid] = total
+
+
+def test_phi_elision_loop_back_accumulator(test: unittest.TestCase, device):
+    """Accumulator updated inside an unrolled-loop if must keep its phi."""
+    rng = np.random.default_rng(1)
+    arr = rng.standard_normal((16, 6)).astype(np.float32)
+    aw = wp.array(arr, device=device)
+    ow = wp.zeros(arr.shape[0], dtype=wp.float32, device=device)
+    wp.launch(test_phi_elision_accumulator_kernel, arr.shape[0], inputs=[aw, ow], device=device)
+    expected = np.where(arr > 0.0, arr * arr, 0.0).sum(axis=1).astype(np.float32)
+    np.testing.assert_allclose(ow.numpy(), expected, atol=1e-5)
+
+
+@wp.kernel
+def test_phi_elision_nested_if_kernel(
+    arr: wp.array2d(dtype=wp.float32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    # ``tmp`` is read only by the inner if, dead after the outer if — its phi
+    # is eligible for elision. ``s`` is loop-back live and must survive.
+    s = wp.float(0.0)
+    for i in range(4):
+        if arr[tid, i] > 0.0:
+            tmp = arr[tid, i] * arr[tid, i]
+            if tmp > 1.0:
+                s = s + tmp
+    out[tid] = s
+
+
+def test_phi_elision_nested_if_dead_inner(test: unittest.TestCase, device):
+    """Nested if where the outer-introduced temp is dead after its if-block."""
+    rng = np.random.default_rng(2)
+    arr = (rng.standard_normal((16, 4)) * 1.5).astype(np.float32)
+    aw = wp.array(arr, device=device)
+    ow = wp.zeros(arr.shape[0], dtype=wp.float32, device=device)
+    wp.launch(test_phi_elision_nested_if_kernel, arr.shape[0], inputs=[aw, ow], device=device)
+    sq = arr * arr
+    expected = np.where((arr > 0.0) & (sq > 1.0), sq, 0.0).sum(axis=1).astype(np.float32)
+    np.testing.assert_allclose(ow.numpy(), expected, atol=1e-5)
+
+
+@wp.kernel
+def test_phi_elision_if_else_kernel(
+    c: wp.array(dtype=wp.int32),
+    out: wp.array(dtype=wp.float32),
+):
+    tid = wp.tid()
+    # Same symbol assigned in both branches: the body-phi loop registers
+    # ``v``, then the else-phi loop emits the merge because ``v`` is live-out.
+    if c[tid] > 0:
+        v = wp.float(1.0)
+    else:
+        v = wp.float(-2.0)
+    out[tid] = v
+
+
+def test_phi_elision_if_else_both_branches(test: unittest.TestCase, device):
+    """``if-else`` where the same symbol is assigned in both branches."""
+    c = np.array([-2, 0, 1, 5, -3, 2], dtype=np.int32)
+    cw = wp.array(c, device=device)
+    ow = wp.zeros(c.size, dtype=wp.float32, device=device)
+    wp.launch(test_phi_elision_if_else_kernel, c.size, inputs=[cw, ow], device=device)
+    expected = np.where(c > 0, 1.0, -2.0).astype(np.float32)
+    np.testing.assert_array_equal(ow.numpy(), expected)
+
+
+def test_phi_elision_predicate_grad(test: unittest.TestCase, device):
+    """Adjoint of the unrolled predicate form matches an analytical reference.
+
+    The gradient of ``max_val`` w.r.t. ``x_arr[tid]`` equals ``d`` at the
+    argmax (since ``v = x_arr[tid] * d``). If phi-elision incorrectly dropped
+    a live merge, the argmax tracking would break and gradients would differ
+    from the reference computed by direct iteration in NumPy.
+    """
+    rng = np.random.default_rng(3)
+    n = 16
+    c_np = (rng.random((5, 5)) < 0.5).astype(np.float32) * rng.standard_normal((5, 5)).astype(np.float32)
+    x_np = rng.standard_normal(n).astype(np.float32) * 1.7
+
+    # Hand-compute the gradient: at the argmax (p*, q*), d/dx[tid] of max_val
+    # is just d* = c[p*, q*] * ((p*+1) + (q*+1)).
+    ref_grad = np.zeros(n, dtype=np.float32)
+    for tid in range(n):
+        best_v = -1e20
+        best_d = np.float32(0.0)
+        for p in range(5):
+            for q in range(5):
+                c = c_np[p, q]
+                if c != 0.0:
+                    d = c * np.float32((p + 1) + (q + 1))
+                    v = x_np[tid] * d
+                    if v > best_v:
+                        best_v = v
+                        best_d = d
+        ref_grad[tid] = best_d
+
+    x = wp.array(x_np, device=device, requires_grad=True)
+    c = wp.array(c_np, device=device, requires_grad=False)
+    out = wp.zeros(n, dtype=wp.float32, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(test_phi_elision_predicate_kernel, n, inputs=[c, x, out], device=device)
+    out.grad = wp.array(np.ones(n, dtype=np.float32), device=device)
+    tape.backward()
+    np.testing.assert_array_equal(tape.gradients[x].numpy(), ref_grad)
+
+
 devices = get_test_devices()
 
 
@@ -446,6 +674,42 @@ add_function_test(TestConditional, "test_short_circuit_and", test_short_circuit_
 add_function_test(TestConditional, "test_short_circuit_or", test_short_circuit_or, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_and_grad", test_short_circuit_and_grad, devices=devices)
 add_function_test(TestConditional, "test_short_circuit_or_grad", test_short_circuit_or_grad, devices=devices)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_predicate_matches_continue",
+    test_phi_elision_predicate_matches_continue,
+    devices=devices,
+)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_read_after_if",
+    test_phi_elision_read_after_if,
+    devices=devices,
+)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_loop_back_accumulator",
+    test_phi_elision_loop_back_accumulator,
+    devices=devices,
+)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_nested_if_dead_inner",
+    test_phi_elision_nested_if_dead_inner,
+    devices=devices,
+)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_if_else_both_branches",
+    test_phi_elision_if_else_both_branches,
+    devices=devices,
+)
+add_function_test(
+    TestConditional,
+    "test_phi_elision_predicate_grad",
+    test_phi_elision_predicate_grad,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":
