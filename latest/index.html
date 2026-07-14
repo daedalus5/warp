@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>NVIDIA Warp Documentation &#8212; Warp 1.15.0.dev0</title>
+    <title>NVIDIA Warp Documentation &#8212; Warp 1.16.0.dev0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="_static/documentation_options.js?v=cfb6835f"></script>
+    <script src="_static/documentation_options.js?v=4ae37cce"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -67,7 +67,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.15.0.dev0" />
+  <meta name="docsearch:version" content="1.16.0.dev0" />
 
 
   </head>
@@ -138,11 +138,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0.dev0</p>
+    <p class="title logo__title">Warp 1.16.0.dev0</p>
   
 </a></div>
     
@@ -277,11 +277,11 @@
       
     
     
-    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.15.0.dev0 - Home"/>
-    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.15.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.16.0.dev0 - Home"/>
+    <img src="_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.16.0.dev0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.15.0.dev0</p>
+    <p class="title logo__title">Warp 1.16.0.dev0</p>
   
 </a>
 
@@ -388,6 +388,7 @@
 <li class="toctree-l1"><a class="reference internal" href="user_guide/configuration.html">Configuration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/deterministic_execution.html">Deterministic Execution</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/contribution_guide.html">Contribution Guide</a></li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/publications.html">Publications using Warp</a></li>
@@ -785,6 +786,7 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-operations">Tile Operations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tile-stack">Tile Stack</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tiles-and-simt-code">Tiles and SIMT Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#cpu-tile-semantics">CPU Tile Semantics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#automatic-differentiation">Automatic Differentiation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#tiles-in-wp-func-functions">Tiles in <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> Functions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/tiles.html#vectorized-tile-loads">Vectorized Tile Loads</a></li>
@@ -829,6 +831,21 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="user_guide/debugging.html#detecting-non-finite-values">Detecting Non-Finite Values</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/debugging.html#cuda-toolkit-debugging-tools">CUDA Toolkit Debugging Tools</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/debugging.html#cpu-memory-error-detection-with-addresssanitizer">CPU Memory Error Detection with AddressSanitizer</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="user_guide/deterministic_execution.html">Deterministic Execution</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#choosing-a-scope">Choosing a Scope</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#what-warp-supports">What Warp Supports</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#tape-and-backward-passes">Tape and Backward Passes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#writing-manual-deterministic-code">Writing Manual Deterministic Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#picking-the-right-mode">Picking the Right Mode</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#capacity-and-dynamic-loops">Capacity and Dynamic Loops</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#cuda-graph-capture">CUDA Graph Capture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#performance">Performance</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#limitations">Limitations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#checklist">Checklist</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/deterministic_execution.html#related-nvidia-libraries">Related NVIDIA Libraries</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="user_guide/limitations.html">Limitations</a><ul>
@@ -899,7 +916,6 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-access-for-a-specific-array-with-wp-can-access">Checking access for a specific array with <code class="docutils literal notranslate"><span class="pre">wp.can_access()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-coarse-device-access-with-device-can-access">Checking coarse device access with <code class="docutils literal notranslate"><span class="pre">Device.can_access()</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-array-access-before-launch">Checking array access before launch</a></li>
-<li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#checking-cpu-gpu-atomic-support">Checking CPU/GPU atomic support</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/memory_access.html#choosing-a-memory-access-pattern">Choosing a memory access pattern</a></li>
 </ul>
 </li>
@@ -913,6 +929,7 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#scopedtimer"><code class="docutils literal notranslate"><span class="pre">ScopedTimer</span></code></a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#cuda-activity-profiling">CUDA Activity Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#cuda-events-timing">CUDA Events Timing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#limiting-the-profiler-capture-range">Limiting the Profiler Capture Range</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#nsight-compute-profiling">Nsight Compute Profiling</a></li>
 <li class="toctree-l2"><a class="reference internal" href="deep_dive/profiling.html#profiling-module-compilation">Profiling Module Compilation</a></li>
 </ul>
