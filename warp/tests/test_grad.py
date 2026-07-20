@@ -168,6 +168,104 @@ def test_for_loop_nested_for_grad(test, device):
     assert_np_equal(tape.gradients[x].numpy(), np.arange(0.0, 9.0, 1.0))
 
 
+@wp.kernel
+def for_loop_continue_grad(c: wp.array2d(dtype=float), x: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+
+    max_val = float(-1.0e20)
+    for p in range(5):
+        for q in range(5):
+            cpq = c[p, q]
+            if cpq == 0.0:
+                continue
+            d = cpq * (float(p + 1) + float(q + 1))
+            v = x[tid] * d
+            if v > max_val:
+                max_val = v
+
+    out[tid] = max_val
+
+
+def test_for_loop_continue_grad(test, device):
+    # Argmax-style reduction inside a static-count loop that uses `continue`.
+    # Regression test for GH-1552: the loop is unrolled (with `continue` lowered
+    # to structured control flow) so the adjoint attributes the gradient to each
+    # thread's argmax winner rather than to the last iteration that ran the body.
+    c_np = np.zeros((5, 5), dtype=np.float32)
+    c_np[0, 0] = 1.0  # d = 1 * (1 + 1) = 2
+    c_np[1, 1] = -1.0  # d = -1 * (2 + 2) = -4
+    x_np = np.array([1.0, -1.0, 2.0, -2.0], dtype=np.float32)
+    ds = np.array([2.0, -4.0], dtype=np.float32)
+
+    # The argmax winner (and hence d/dx) flips with the sign of x.
+    expected_out = np.array([np.max(xi * ds) for xi in x_np], dtype=np.float32)
+    expected_grad = np.array([ds[np.argmax(xi * ds)] for xi in x_np], dtype=np.float32)
+
+    c = wp.array(c_np, dtype=float, device=device)
+    x = wp.array(x_np, dtype=float, device=device, requires_grad=True)
+    out = wp.zeros(x_np.shape[0], dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_continue_grad, dim=x_np.shape[0], inputs=[c, x, out], device=device)
+
+    assert_np_equal(out.numpy(), expected_out)
+
+    out.grad = wp.ones_like(out)
+    tape.backward()
+
+    # forward outputs must persist, gradients must match the argmax winners
+    assert_np_equal(out.numpy(), expected_out)
+    assert_np_equal(tape.gradients[x].numpy(), expected_grad)
+
+
+@wp.kernel
+def for_loop_continue_patterns_grad(c: wp.array[float], x: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+
+    acc = float(0.0)
+    for i in range(8):
+        ci = c[i]
+        if ci == 0.0:
+            continue  # guard: body escapes, no else
+        if ci < 0.0:
+            acc += x[tid] * 3.0  # statement before continue
+            continue
+        else:
+            acc += x[tid] * ci  # else branch falls through
+
+    out[tid] = acc
+
+
+def test_for_loop_continue_patterns_grad(test, device):
+    # Exercises the `continue`-lowering transform (GH-1552) beyond a simple guard:
+    # statements before a `continue`, an escaping branch paired with a falling-through
+    # `else`, and multiple guards in one body.
+    c_np = np.array([2.0, -1.0, 0.0, 4.0, -3.0, 0.0, 1.0, -2.0], dtype=np.float32)
+    x_np = np.array([1.0, -1.0, 2.0, -2.0], dtype=np.float32)
+
+    # per-iteration d(acc)/dx: 0 if c == 0, 3 if c < 0, else c
+    factor = np.where(c_np == 0.0, 0.0, np.where(c_np < 0.0, 3.0, c_np)).astype(np.float32)
+    expected_out = x_np * factor.sum()
+    expected_grad = np.full(x_np.shape, factor.sum(), dtype=np.float32)
+
+    c = wp.array(c_np, dtype=float, device=device)
+    x = wp.array(x_np, dtype=float, device=device, requires_grad=True)
+    out = wp.zeros(x_np.shape[0], dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_continue_patterns_grad, dim=x_np.shape[0], inputs=[c, x, out], device=device)
+
+    assert_np_equal(out.numpy(), expected_out)
+
+    out.grad = wp.ones_like(out)
+    tape.backward()
+
+    assert_np_equal(out.numpy(), expected_out)
+    assert_np_equal(tape.gradients[x].numpy(), expected_grad)
+
+
 # differentiating thought most while loops is not supported
 # since doing things like i = i + 1 breaks adjointing
 
@@ -856,6 +954,10 @@ add_function_test(
     TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=get_selected_cuda_test_devices()
 )
 add_function_test(TestGrad, "test_for_loop_nested_if_grad", test_for_loop_nested_if_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_continue_grad", test_for_loop_continue_grad, devices=devices)
+add_function_test(
+    TestGrad, "test_for_loop_continue_patterns_grad", test_for_loop_continue_patterns_grad, devices=devices
+)
 add_function_test(TestGrad, "test_preserve_outputs_grad", test_preserve_outputs_grad, devices=devices)
 add_function_test(TestGrad, "test_vector_math_grad", test_vector_math_grad, devices=devices)
 add_function_test(TestGrad, "test_matrix_math_grad", test_matrix_math_grad, devices=devices)

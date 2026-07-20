@@ -3572,12 +3572,10 @@ class Adjoint:
 
         return warp._src.types.is_int(obj), obj
 
-    # detects whether a loop contains a break (or continue) statement
+    # detects whether a loop contains a break statement
     def contains_break(adj, body):
         for s in body:
             if isinstance(s, ast.Break):
-                return True
-            elif isinstance(s, ast.Continue):
                 return True
             elif isinstance(s, ast.If):
                 if adj.contains_break(s.body):
@@ -3590,6 +3588,76 @@ class Adjoint:
                 pass
 
         return False
+
+    # detects whether a loop contains a continue statement
+    def contains_continue(adj, body):
+        for s in body:
+            if isinstance(s, ast.Continue):
+                return True
+            elif isinstance(s, ast.If):
+                if adj.contains_continue(s.body):
+                    return True
+                if adj.contains_continue(s.orelse):
+                    return True
+            else:
+                # note that nested for or while loops containing a continue
+                # statement do not affect the current loop
+                pass
+
+        return False
+
+    @staticmethod
+    def _rebuild_if(node, body, orelse):
+        # Construct a structured `if` from transformed branches. `emit_If` drops
+        # an `if` whose body is empty, so backfill an empty body with `pass` to
+        # keep the (non-empty) `else` branch reachable.
+        new_if = ast.If(test=node.test, body=body if body else [ast.Pass()], orelse=orelse)
+        ast.copy_location(new_if, node)
+        ast.fix_missing_locations(new_if)
+        return new_if
+
+    def eliminate_continue(adj, stmts):
+        """Rewrite a loop body so this loop's ``continue`` statements become
+        structured ``if``/``else`` control flow, enabling the loop to be unrolled.
+
+        Returns ``(new_stmts, escapes)`` where ``escapes`` is ``True`` when
+        executing ``new_stmts`` always reaches a ``continue`` (control never falls
+        through to statements following this sequence in the same iteration).
+        Nested loops are treated as opaque, so their own ``continue`` statements
+        are left intact.
+        """
+        result = []
+        for index, s in enumerate(stmts):
+            if isinstance(s, ast.Continue):
+                # Statements after a continue are unreachable in this iteration.
+                return result, True
+
+            if isinstance(s, ast.If):
+                body_stmts, body_escapes = adj.eliminate_continue(s.body)
+                orelse_stmts, orelse_escapes = adj.eliminate_continue(s.orelse)
+
+                if not body_escapes and not orelse_escapes:
+                    result.append(adj._rebuild_if(s, body_stmts, orelse_stmts))
+                    continue
+
+                # At least one branch continues, so trailing statements execute
+                # only on the branch that falls through; fold them into it.
+                rest_stmts, rest_escapes = adj.eliminate_continue(stmts[index + 1 :])
+
+                if body_escapes and orelse_escapes:
+                    # Both branches escape: trailing code is dead.
+                    result.append(adj._rebuild_if(s, body_stmts, orelse_stmts))
+                    return result, True
+
+                if body_escapes:
+                    result.append(adj._rebuild_if(s, body_stmts, orelse_stmts + rest_stmts))
+                else:
+                    result.append(adj._rebuild_if(s, body_stmts + rest_stmts, orelse_stmts))
+                return result, rest_escapes
+
+            result.append(s)
+
+        return result, False
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
@@ -3669,7 +3737,7 @@ class Adjoint:
                 ok_to_unroll = False
 
             elif adj.contains_break(loop.body):
-                log_debug("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+                log_debug("Warning: 'break' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
             if ok_to_unroll:
@@ -3697,13 +3765,19 @@ class Adjoint:
             # prevent constant conflicts in `materialize_redefinitions()`
             adj.record_constant_iter_symbol(const_iter_sym)
 
+            # lower this loop's `continue` statements into structured control flow
+            # so the body is straight-line and can be unrolled with correct adjoints
+            body = node.body
+            if adj.contains_continue(node.body):
+                body, _ = adj.eliminate_continue(node.body)
+
             # unroll static for-loop
             for i in unroll_range:
                 const_iter = adj.add_constant(i)
                 adj.symbols[const_iter_sym] = const_iter
 
                 # eval body
-                for s in node.body:
+                for s in body:
                     adj.eval(s)
 
         # otherwise generate a dynamic loop

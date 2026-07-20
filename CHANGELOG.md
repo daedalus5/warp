@@ -63,6 +63,9 @@
 - Fix heap corruption when capturing `wp.sparse.bsr_set_transpose()` with `topology="padded"`
   into a destination without enough row capacity
   ([GH-1630](https://github.com/NVIDIA/warp/issues/1630)).
+- Fix wrong gradients for argmax-style reductions in fixed-size loops that use `continue`. Such loops are now unrolled
+  by lowering `continue` into structured control flow, matching the predicate form
+  ([GH-1552](https://github.com/NVIDIA/warp/issues/1552)).
 
 ### Documentation
 
